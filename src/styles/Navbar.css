@@ -1,5 +1,5 @@
 .navbar {
-  background-color: #1a4d3a;
+  background: linear-gradient(135deg, #0f2419 0%, #1a4d3a 100%);
   color: white;
   padding: 1.5rem 1rem;
   display: flex;
@@ -24,7 +24,7 @@
 }
 
 .navbar .logo a:hover {
-  color: #4ade80;
+  color: #3a7257;
 }
 
 .nav-links {
@@ -52,19 +52,20 @@
 }
 
 .nav-links a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #4ade80;
+  background: linear-gradient(135deg, rgba(58, 114, 87, 0.3) 0%, rgba(45, 95, 71, 0.3) 100%);
+  color: #4a8566;
 }
 
 .nav-links .active a {
-  background-color: #4ade80;
-  color: #1a4d3a;
+  background: linear-gradient(135deg, #3a7257 0%, #4a8566 100%);
+  color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 4px 12px rgba(58, 114, 87, 0.4);
 }
 
 .nav-links .active a:hover {
-  background-color: #22c55e;
-  color: #1a4d3a;
+  background: linear-gradient(135deg, #4a8566 0%, #3a7257 100%);
+  color: #ffffff;
 }
 
 /* Mobile responsiveness */

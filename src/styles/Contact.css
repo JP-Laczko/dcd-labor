@@ -2,8 +2,9 @@
 
 .contact-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: linear-gradient(90deg, #f0fdfa 0%, #ccfbf1 25%, #99f6e4 50%, #5eead4 75%, #2dd4bf 100%);
   padding: 100px 20px 60px;
+  animation: fadeInUp 1s ease-out;
 }
 
 .contact-container {
@@ -44,18 +45,23 @@
 }
 
 .contact-card {
-  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(90deg, #ffffff 0%, #dbeafe 50%, #bfdbfe 100%);
   padding: 32px;
   border-radius: 20px;
   text-align: center;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-  border: 2px solid var(--accent-green);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  border: 4px solid #000000;
   transition: all 0.3s ease;
+  animation: scaleIn 0.8s ease-out;
 }
 
+.contact-card:nth-child(1) { animation-delay: 0.1s; }
+.contact-card:nth-child(2) { animation-delay: 0.3s; }
+.contact-card:nth-child(3) { animation-delay: 0.5s; }
+
 .contact-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.12);
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 25px 50px rgba(59, 130, 246, 0.2);
 }
 
 .contact-icon {
@@ -66,7 +72,7 @@
 
 .contact-card h3 {
   font-size: 1.4rem;
-  color: var(--primary-green);
+  color: #1e40af;
   margin-bottom: 12px;
   font-weight: 600;
 }
@@ -89,11 +95,12 @@
 }
 
 .pricing-section {
-  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  background: linear-gradient(90deg, #ffffff 0%, #f1f5f9 100%);
   padding: 40px;
   border-radius: 20px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  border: 4px solid #000000;
+  animation: slideInLeft 1s ease-out;
 }
 
 .pricing-section h2 {
@@ -111,11 +118,11 @@
 }
 
 .pricing-item {
-  background: var(--white);
+  background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 100%);
   padding: 20px;
   border-radius: 12px;
-  border-left: 4px solid var(--accent-green);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 3px solid #000000;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
 }
 
@@ -126,20 +133,21 @@
 
 .pricing-item h4 {
   font-size: 1.2rem;
-  color: var(--primary-green);
+  color: #1e293b;
   margin-bottom: 8px;
   font-weight: 600;
 }
 
 .pricing-item p {
   font-size: 1rem;
-  color: var(--text-secondary);
+  color: #334155;
   margin: 0;
   font-weight: 500;
 }
 
 .hours-section {
-  background: linear-gradient(135deg, #1a4d3a 0%, #2d5f47 100%);
+  background: linear-gradient(135deg, #0f2419 0%, #1a4d3a 50%, #2d5f47 100%);
+  backdrop-filter: blur(10px);
   padding: 40px;
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(26, 77, 58, 0.3);
@@ -169,7 +177,7 @@
   padding: 16px 20px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.4);
 }
 
 .day {
@@ -179,16 +187,23 @@
 
 .time {
   font-weight: 500;
-  color: var(--accent-green);
+  color: var(--white);
 }
 
 .emergency-section {
-  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(90deg, #ffffff 0%, #fef2f2 50%, #fecaca 100%);
   padding: 40px;
   border-radius: 20px;
   text-align: center;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-  border: 2px solid #ef4444;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  border: 4px solid #000000;
+  animation: slideInRight 1s ease-out;
+  transition: all 0.3s ease;
+}
+
+.emergency-section:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px rgba(239, 68, 68, 0.2);
 }
 
 .emergency-section h2 {
@@ -200,7 +215,7 @@
 
 .emergency-section p {
   font-size: 1.1rem;
-  color: var(--text-secondary);
+  color: #7f1d1d;
   margin-bottom: 24px;
   line-height: 1.6;
 }

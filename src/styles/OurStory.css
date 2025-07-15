@@ -1,6 +1,7 @@
 .our-story-page {
   padding: 80px 0;
   min-height: 100vh;
+  background: linear-gradient(90deg, #f0fdf4 0%, #dcfce7 25%, #bbf7d0 50%, #86efac 75%, #22c55e 100%);
 }
 
 .story-container {

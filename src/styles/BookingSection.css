@@ -1,13 +1,14 @@
 .booking-section {
     padding: 80px 20px;
-    background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+    background: linear-gradient(90deg, #f0fdf4 0%, #dcfce7 25%, #bbf7d0 50%, #86efac 75%, #22c55e 100%);
     max-width: 900px;
     margin: 0 auto 60px;
     border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
     color: var(--text-primary);
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 4px solid #000000;
+    animation: fadeInUp 1s ease-out;
   }
   
   .booking-section h2 {
@@ -28,39 +29,45 @@
   
   .services-showcase {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 32px;
     margin: 40px 0;
+    max-width: 100%;
   }
   
   .service-showcase-card {
-    background: var(--white);
+    background: linear-gradient(90deg, #ffffff 0%, #f1f5f9 50%, #e2e8f0 100%);
     padding: 28px;
     border-radius: 16px;
-    border: 2px solid var(--accent-green);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    border: 4px solid #000000;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
+    animation: scaleIn 0.8s ease-out;
   }
   
+  .service-showcase-card:nth-child(1) { animation-delay: 0.1s; }
+  .service-showcase-card:nth-child(2) { animation-delay: 0.2s; }
+  .service-showcase-card:nth-child(3) { animation-delay: 0.3s; }
+  
   .service-showcase-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-    border-color: var(--light-green);
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    border-color: #000000;
   }
   
   .service-showcase-card h3 {
     font-size: 1.4rem;
-    color: var(--primary-green);
+    color: #1e293b;
     margin-bottom: 12px;
     font-weight: 600;
   }
   
   .service-showcase-card p {
-    color: var(--text-secondary);
+    color: #334155;
     font-size: 1rem;
     line-height: 1.5;
     margin: 0 0 12px 0;
@@ -87,21 +94,28 @@
     text-align: center;
     margin-top: 40px;
     padding: 30px;
-    background: linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, rgba(34, 197, 94, 0.1) 100%);
+    background: linear-gradient(90deg, #ffffff 0%, #f1f5f9 50%, #e2e8f0 100%);
     border-radius: 16px;
-    border: 2px dashed var(--accent-green);
+    border: 4px solid #000000;
+    animation: slideInRight 1s ease-out;
+    transition: all 0.3s ease;
+  }
+  
+  .additional-services:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.25);
   }
 
   .additional-services h3 {
     font-size: 1.5rem;
-    color: var(--primary-green);
+    color: #1e293b;
     margin-bottom: 12px;
     font-weight: 700;
     letter-spacing: 1px;
   }
 
   .additional-services p {
-    color: var(--text-secondary);
+    color: #334155;
     font-size: 1.1rem;
     margin: 0;
   }

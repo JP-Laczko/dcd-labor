@@ -2,11 +2,11 @@
 
 :root {
   /* Professional DCD Labor Color Palette */
-  --primary-green: #1a4d3a;
-  --secondary-green: #2d5f47;
-  --accent-green: #4ade80;
-  --light-green: #22c55e;
-  --very-light-green: #bbf7d0;
+  --primary-green: #0f2419;
+  --secondary-green: #1a4d3a;
+  --accent-green: #2d5f47;
+  --light-green: #3a7257;
+  --very-light-green: #4a8566;
   
   /* Neutral Colors */
   --dark-gray: #1f2937;
@@ -17,9 +17,9 @@
   --off-white: #f8fafc;
   
   /* Text Colors */
-  --text-primary: #111827;
+  --text-primary: #1f2937;
   --text-secondary: #4b5563;
-  --text-light: #9ca3af;
+  --text-light: #6b7280;
   
   /* Overlay */
   --black-overlay: rgba(0, 0, 0, 0.6);
@@ -43,7 +43,7 @@ html, body, #root {
   height: 100%;
   overflow-x: hidden;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 25%, #dcfce7 50%, #bbf7d0 75%, #86efac 100%);
+  background: linear-gradient(90deg, #f5f0e8 0%, #ede3d6 25%, #e5d7c4 50%, #ddcab2 75%, #d5bda0 100%);
   min-height: 100vh;
   color: var(--text-primary);
   line-height: 1.6;
@@ -52,6 +52,90 @@ html, body, #root {
 /* Smooth scrolling for the entire page */
 html {
   scroll-behavior: smooth;
+}
+
+/* Loading animations and effects */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Apply animations to elements */
+.fade-in-up {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.8s ease-out;
+}
+
+.slide-in-right {
+  animation: slideInRight 0.8s ease-out;
+}
+
+.scale-in {
+  animation: scaleIn 0.6s ease-out;
+}
+
+.pulse-hover:hover {
+  animation: pulse 0.6s ease-in-out;
 }
 
 .hero-section {
@@ -83,7 +167,8 @@ html {
 }
 
 .button {
-  background-color: var(--accent-green);
+  background: linear-gradient(135deg, var(--accent-green) 0%, var(--light-green) 50%, var(--very-light-green) 100%);
+  box-shadow: 0 8px 20px rgba(45, 95, 71, 0.4);
   color: var(--white);
   padding: 14px 28px;
   border: none;
@@ -91,15 +176,31 @@ html {
   font-weight: 600;
   font-size: 1.1rem;
   cursor: pointer;
-  box-shadow: var(--shadow-md);
   transition: all 0.3s ease;
   display: inline-block;
   text-decoration: none;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.button:hover::before {
+  left: 100%;
 }
 
 .button:hover {
-  background-color: var(--light-green);
+  background: linear-gradient(135deg, var(--light-green) 0%, var(--very-light-green) 50%, var(--accent-green) 100%);
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -112,18 +213,26 @@ html {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
-  max-width: 900px;
+  max-width: 95vw;
   margin: 40px auto;
   padding: 0 20px;
 }
 
 .service-card {
-  background-color: var(--white);
+  background: linear-gradient(90deg, #ffffff 0%, #f1f5f9 100%);
   border-radius: 20px;
   padding: 24px;
-  box-shadow: 0 4px 8px rgba(55, 65, 81, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   text-align: center;
-  color: var(--gray-dark);
+  color: var(--text-primary);
+  border: 4px solid #000000;
+  transition: all 0.3s ease;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.service-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
 }
 
 .service-card h3 {
@@ -135,30 +244,38 @@ html {
   display: flex;
   justify-content: center;
   gap: 40px;
-  max-width: 900px;
+  max-width: 95vw;
   margin: 40px auto;
   padding: 0 20px;
 }
 
 .step-card {
-  background-color: var(--white);
+  background: linear-gradient(90deg, #ffffff 0%, #f8fafc 100%);
   border-radius: 20px;
   padding: 24px;
   width: 200px;
-  box-shadow: 0 4px 8px rgba(55, 65, 81, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   text-align: center;
-  color: var(--gray-dark);
+  color: var(--text-primary);
+  border: 4px solid #000000;
+  transition: all 0.3s ease;
+  animation: scaleIn 0.6s ease-out;
+}
+
+.step-card:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
 }
 
 .step-number {
   font-size: 48px;
   font-weight: 700;
-  color: var(--green);
+  color: var(--accent-green);
   margin-bottom: 10px;
 }
 
 footer {
-  background-color: var(--gray-dark);
+  background: linear-gradient(135deg, #0f2419 0%, #1a4d3a 100%);
   color: var(--white);
   padding: 20px;
   text-align: center;

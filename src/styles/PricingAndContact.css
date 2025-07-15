@@ -1,6 +1,7 @@
 .pricing-contact-section {
     padding: 80px 20px;
-    background: linear-gradient(135deg, #1a4d3a 0%, #2d5f47 100%);
+    background: linear-gradient(135deg, #0f2419 0%, #1a4d3a 50%, #2d5f47 100%);
+    backdrop-filter: blur(10px);
     max-width: 900px;
     margin: 40px auto;
     border-radius: 20px;

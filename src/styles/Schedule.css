@@ -2,18 +2,18 @@
 
 .schedule-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: linear-gradient(90deg, #f0fdfa 0%, #ccfbf1 25%, #99f6e4 50%, #5eead4 75%, #2dd4bf 100%);
   padding: 100px 20px 60px;
 }
 
 .schedule-container {
   max-width: 900px;
   margin: 0 auto;
-  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(90deg, #ffffff 0%, #f1f5f9 100%);
   border-radius: 24px;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
   padding: 50px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 4px solid #000000;
 }
 
 .schedule-header {
@@ -49,10 +49,12 @@
 }
 
 .checkbox-group {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .checkbox-label {
@@ -60,11 +62,12 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border: 2px solid #e2e8f0;
+  border: 3px solid #000000;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: #ffffff;
+  background: linear-gradient(90deg, #ffffff 0%, #f1f5f9 100%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .checkbox-label:hover {
@@ -99,6 +102,11 @@
   grid-column: 1 / -1;
 }
 
+.form-group.services-needed {
+  grid-column: 1 / -1;
+  max-width: 100%;
+}
+
 .form-group label {
   font-weight: 600;
   color: var(--text-primary);
@@ -110,12 +118,13 @@
 .form-group select,
 .form-group textarea {
   padding: 14px 16px;
-  border: 2px solid var(--very-light-gray);
+  border: 3px solid #000000;
   border-radius: 12px;
   font-size: 1rem;
   transition: all 0.3s ease;
   background-color: var(--white);
   color: var(--text-primary);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 }
 
 .form-group input:focus,
@@ -145,18 +154,20 @@
 }
 
 .payment-info {
-  background: linear-gradient(135deg, #1a4d3a 0%, #2d5f47 100%);
+  background: linear-gradient(90deg, #1a4d3a 0%, #2d5f47 100%);
   padding: 24px;
   border-radius: 16px;
   margin: 20px 0;
   color: var(--white);
   text-align: center;
+  border: 4px solid #000000;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .payment-info h3 {
   font-size: 1.5rem;
   margin-bottom: 12px;
-  color: var(--accent-green);
+  color: var(--white);
   font-weight: 600;
 }
 
@@ -164,7 +175,8 @@
   font-size: 1rem;
   line-height: 1.6;
   margin: 0;
-  opacity: 0.95;
+  opacity: 1;
+  color: var(--white);
 }
 
 .submit-button {
