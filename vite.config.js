@@ -14,5 +14,10 @@ export default defineConfig({
         chunkFileNames: 'assets/[name].js'
       }
     }
+  },
+  server: {
+    mimeTypes: {
+      '.jsx': 'text/javascript'
+    }
   }
 })
