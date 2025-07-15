@@ -7,13 +7,6 @@ export default defineConfig({
   base: process.env.NODE_ENV === 'production' ? '/dcd-labor/' : '/',
   build: {
     assetsDir: 'assets',
-    rollupOptions: {
-      output: {
-        assetFileNames: 'assets/[name].[ext]',
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js'
-      }
-    }
   },
   server: {
     fs: {
