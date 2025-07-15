@@ -1,0 +1,130 @@
+.our-story-page {
+  padding: 80px 0;
+  min-height: 100vh;
+}
+
+.story-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.story-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.story-header h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--primary-green);
+  font-weight: 700;
+  line-height: 1.2;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.story-section {
+  margin-bottom: 80px;
+}
+
+.story-section h2 {
+  font-size: 2rem;
+  color: var(--primary-green);
+  font-weight: 700;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.story-section-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+}
+
+.story-section-content.reverse {
+  grid-template-columns: 1fr 1fr;
+}
+
+.story-section-content.reverse .story-text {
+  order: 2;
+}
+
+.story-section-content.reverse .story-image {
+  order: 1;
+}
+
+.story-text {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.story-text p {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.story-text p:last-child {
+  margin-bottom: 0;
+}
+
+.mission-statement {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--primary-green);
+  font-size: 1.2rem !important;
+  text-align: center;
+  padding: 20px 0;
+  border-top: 2px solid var(--accent-green);
+  border-bottom: 2px solid var(--accent-green);
+  margin: 20px 0 !important;
+}
+
+.story-image {
+  text-align: center;
+}
+
+.story-image img {
+  width: 100%;
+  max-width: 500px;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 16px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.story-image img:hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .story-section-content,
+  .story-section-content.reverse {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  
+  .story-section-content.reverse .story-text,
+  .story-section-content.reverse .story-image {
+    order: initial;
+  }
+  
+  .story-text {
+    padding: 25px;
+  }
+  
+  .story-image img {
+    height: 250px;
+  }
+  
+  .story-section {
+    margin-bottom: 60px;
+  }
+}

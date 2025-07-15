@@ -1,0 +1,226 @@
+.calendar-section {
+  padding: 60px 20px;
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  margin: 40px auto;
+  max-width: 800px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.calendar-container {
+  text-align: center;
+}
+
+.calendar-section h2 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--primary-green);
+  font-weight: 700;
+}
+
+.calendar-section p {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  color: var(--text-secondary);
+}
+
+.calendar {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+  border: 2px solid var(--accent-green);
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 0 12px;
+}
+
+.calendar-header h3 {
+  font-size: 1.5rem;
+  color: var(--primary-green);
+  font-weight: 600;
+  margin: 0;
+}
+
+.nav-button {
+  background: var(--accent-green);
+  color: var(--white);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-button:hover {
+  background: var(--light-green);
+  transform: scale(1.1);
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.weekday {
+  padding: 12px 8px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  position: relative;
+  gap: 2px;
+}
+
+.calendar-day.empty {
+  visibility: hidden;
+}
+
+.calendar-day.available {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: var(--white);
+  border: 2px solid transparent;
+}
+
+.calendar-day.unavailable {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: var(--white);
+  border: 2px solid transparent;
+}
+
+.calendar-day.past {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.calendar-day.clickable {
+  cursor: pointer;
+}
+
+.calendar-day.clickable:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  z-index: 1;
+}
+
+.calendar-day.unavailable.clickable:hover {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.calendar-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.legend-color.available {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
+
+.legend-color.unavailable {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+@media (max-width: 768px) {
+  .calendar-section {
+    padding: 40px 16px;
+    margin: 20px 16px;
+  }
+
+  .calendar {
+    padding: 16px;
+  }
+
+  .calendar-section h2 {
+    font-size: 2rem;
+  }
+
+  .calendar-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .nav-button {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .calendar-day {
+    font-size: 0.8rem;
+    padding: 8px;
+  }
+
+  .calendar-legend {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    font-size: 0.8rem;
+  }
+}
+
+.day-number {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.slot-count {
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 2px 5px;
+  border-radius: 8px;
+  line-height: 1;
+  font-weight: 700;
+}

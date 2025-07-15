@@ -1,0 +1,9 @@
+Flip the our story and book a service section
+
+The logos in the follow up section don’t match at all. It should be Facebook, then instagram, then TikTok. 
+
+The grey text in schedule your service today… in the home page still isn’t readable - make it white or a shade of gray.
+
+Right under the head, the first thing I want to have is a calendar section where each day has a little box that you can click on to schedule a service. This will be dynamic and show red or green based on if that day is available or not - we will pull from the backend to check this. Clicking on an available day will take you right to the Book service section and fill out that day on the form. 
+
+How should we handle the scheduling? I’m going to use MongoDB as the backend to store the available times. Should we store it as the upcoming 2 weeks and available hours? Then display this in the book a service?

@@ -1,0 +1,26 @@
+// Environment configuration for DCD Labor
+
+const config = {
+  // API Configuration
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001',
+  
+  // External Service Keys (placeholders - replace with actual values)
+  STRIPE_PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
+  EMAILJS_SERVICE_ID: import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_placeholder',
+  EMAILJS_TEMPLATE_ID: import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_placeholder',
+  EMAILJS_PUBLIC_KEY: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'public_key_placeholder',
+  
+  // MongoDB Configuration (for reference)
+  MONGODB_URI: import.meta.env.VITE_MONGODB_URI || 'mongodb://localhost:27017/dcd-labor',
+  
+  // Application Settings
+  APP_NAME: 'DCD Labor',
+  COMPANY_EMAIL: 'info@dcdlabor.com',
+  COMPANY_PHONE: '(555) 123-4567',
+  
+  // Development/Production flags
+  isDevelopment: import.meta.env.DEV,
+  isProduction: import.meta.env.PROD,
+};
+
+export default config;

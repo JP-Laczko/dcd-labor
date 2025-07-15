@@ -1,0 +1,60 @@
+.pricing-contact-section {
+    padding: 80px 20px;
+    background: linear-gradient(135deg, #1a4d3a 0%, #2d5f47 100%);
+    max-width: 900px;
+    margin: 40px auto;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px rgba(26, 77, 58, 0.3);
+    color: var(--white);
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .pricing-contact-section h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--white);
+    font-weight: 700;
+  }
+  
+  .pricing-info,
+  .contact-info {
+    margin-bottom: 30px;
+  }
+  
+  .pricing-info h3,
+  .contact-info h3 {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+    color: var(--accent-green);
+    font-weight: 600;
+  }
+  
+  .pricing-info ul {
+    list-style: none;
+    padding: 0;
+    font-weight: 600;
+    font-size: 1.2rem;
+  }
+  
+  .pricing-info li {
+    margin-bottom: 8px;
+  }
+  
+  .contact-info p {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+  
+  .contact-info a {
+    color: var(--accent-green);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+  }
+  
+  .contact-info a:hover {
+    color: var(--light-green);
+    text-decoration: underline;
+  }
+  
