@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import "../styles/Schedule.css";
+import rateService from "../services/rateService";
+import emailService from "../services/emailService";
+import mongoService from "../services/mongoService";
 
 export default function Schedule() {
   const location = useLocation();
@@ -17,8 +20,13 @@ export default function Schedule() {
     notes: ""
   });
 
+  const [rates, setRates] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // Initialize MongoDB connection
+    mongoService.connect();
+    
     // Check if date is passed via URL params
     const urlParams = new URLSearchParams(location.search);
     const dateParam = urlParams.get('date');
@@ -29,6 +37,10 @@ export default function Schedule() {
         date: dateParam
       }));
     }
+
+    // Load current rates
+    const currentRates = rateService.getRates();
+    setRates(currentRates);
   }, [location]);
 
   const [errors, setErrors] = useState({});
@@ -45,9 +57,21 @@ export default function Schedule() {
   ];
 
   const crewSizes = [
-    { value: "2", label: "2-Man Crew", rate: "$80/hour" },
-    { value: "3", label: "3-Man Crew", rate: "$120/hour" },
-    { value: "4", label: "4-Man Crew", rate: "$160/hour" }
+    { 
+      value: "2", 
+      label: "2-Man Crew", 
+      rate: rates.twoMan ? `$${rates.twoMan.low} - $${rates.twoMan.high}/hour` : "$50 - $70/hour"
+    },
+    { 
+      value: "3", 
+      label: "3-Man Crew", 
+      rate: rates.threeMan ? `$${rates.threeMan.low} - $${rates.threeMan.high}/hour` : "$75 - $100/hour"
+    },
+    { 
+      value: "4", 
+      label: "4-Man Crew", 
+      rate: rates.fourMan ? `$${rates.fourMan.low} - $${rates.fourMan.high}/hour` : "$100 - $130/hour"
+    }
   ];
 
 
@@ -116,9 +140,53 @@ export default function Schedule() {
       return;
     }
 
-    // Here you would integrate with Stripe for payment processing
-    console.log("Form submitted:", formData);
-    alert("Booking request submitted! We'll contact you soon to confirm and process payment.");
+    setIsSubmitting(true);
+
+    try {
+      // Save booking to MongoDB
+      const bookingResult = await mongoService.createBooking(formData);
+      
+      if (!bookingResult.success) {
+        throw new Error(bookingResult.error || 'Failed to save booking');
+      }
+
+      // Send booking confirmation emails
+      const emailResult = await emailService.sendBookingConfirmation(formData);
+      
+      // Update email status in database
+      if (bookingResult.booking) {
+        await mongoService.updateBookingStatus(
+          bookingResult.booking.bookingId, 
+          'pending', 
+          `Emails sent: ${emailResult.success ? 'Success' : 'Failed'}`
+        );
+      }
+      
+      if (emailResult.success) {
+        alert("Booking request submitted successfully! We'll contact you within 24 hours to confirm and process payment. Please check your email for confirmation details.");
+      } else {
+        alert("Booking submitted successfully but there was an issue sending confirmation emails. We'll still contact you to confirm your appointment.");
+      }
+      
+      // Reset form
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        services: [],
+        date: "",
+        crewSize: "",
+        yardAcreage: "",
+        notes: ""
+      });
+      
+    } catch (error) {
+      console.error("Error submitting booking:", error);
+      alert("There was an error submitting your booking. Please try again or contact us directly.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -177,6 +245,9 @@ export default function Schedule() {
 
               <div className="form-group">
                 <label>Services Needed * (select at least one)</label>
+                <div className="services-scroll-hint">
+                  <em>Scroll to see all services</em>
+                </div>
                 <div className="checkbox-group">
                   {services.map((service, index) => (
                     <label key={index} className="checkbox-label">
@@ -276,8 +347,8 @@ export default function Schedule() {
               <p>A 50% deposit will be required to confirm your booking. We accept all major credit cards and will process payment securely after we confirm your appointment details.</p>
             </div>
 
-            <button type="submit" className="submit-button">
-              Submit Booking Request
+            <button type="submit" className="submit-button" disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Submit Booking Request'}
             </button>
           </form>
         </div>

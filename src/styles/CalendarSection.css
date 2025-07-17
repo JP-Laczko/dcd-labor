@@ -174,40 +174,110 @@
 
 @media (max-width: 768px) {
   .calendar-section {
-    padding: 40px 16px;
-    margin: 20px 16px;
+    padding: 40px 10px;
+    margin: 20px 10px;
+    max-width: calc(100vw - 20px);
   }
 
   .calendar {
-    padding: 16px;
+    padding: 12px;
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .calendar-section h2 {
-    font-size: 2rem;
+    font-size: 1.8rem;
   }
 
-  .calendar-header h3 {
-    font-size: 1.2rem;
-  }
-
-  .nav-button {
-    width: 36px;
-    height: 36px;
+  .calendar-section p {
     font-size: 1rem;
   }
 
+  .calendar-header {
+    padding: 0 4px;
+    margin-bottom: 16px;
+  }
+
+  .calendar-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .nav-button {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+
+  .calendar-weekdays {
+    gap: 2px;
+  }
+
+  .weekday {
+    padding: 8px 4px;
+    font-size: 0.75rem;
+  }
+
+  .calendar-grid {
+    gap: 2px;
+  }
+
   .calendar-day {
+    font-size: 0.75rem;
+    padding: 4px;
+    min-height: 40px;
+  }
+
+  .day-number {
     font-size: 0.8rem;
-    padding: 8px;
   }
 
   .calendar-legend {
-    gap: 16px;
+    gap: 12px;
     flex-wrap: wrap;
+    margin-top: 16px;
   }
 
   .legend-item {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-section {
+    padding: 30px 8px;
+    margin: 15px 8px;
+  }
+
+  .calendar {
+    padding: 8px;
+  }
+
+  .calendar-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .calendar-header h3 {
+    font-size: 1rem;
+  }
+
+  .nav-button {
+    width: 28px;
+    height: 28px;
     font-size: 0.8rem;
+  }
+
+  .weekday {
+    padding: 6px 2px;
+    font-size: 0.7rem;
+  }
+
+  .calendar-day {
+    font-size: 0.7rem;
+    min-height: 35px;
+  }
+
+  .day-number {
+    font-size: 0.75rem;
   }
 }
 

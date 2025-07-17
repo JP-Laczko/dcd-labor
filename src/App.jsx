@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Schedule from "./pages/Schedule";
 import Contact from "./pages/Contact";
 import OurStory from "./pages/OurStory";
+import Admin from "./pages/Admin";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/our-story" element={<OurStory />} />
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </Router>
   );

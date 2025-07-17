@@ -48,6 +48,17 @@
   gap: 24px;
 }
 
+.services-scroll-hint {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 8px;
+  text-align: center;
+  padding: 4px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
 .checkbox-group {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -55,6 +66,9 @@
   margin-top: 8px;
   max-height: 200px;
   overflow-y: auto;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 8px;
 }
 
 .checkbox-label {
@@ -205,6 +219,12 @@
   transform: translateY(0);
 }
 
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .schedule-page {
@@ -226,6 +246,16 @@
   .form-row {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .checkbox-group {
+    grid-template-columns: 1fr;
+    max-height: 180px;
+  }
+
+  .services-scroll-hint {
+    font-size: 0.8rem;
+    padding: 6px;
   }
 
   .submit-button {

@@ -1,17 +1,27 @@
+import { useState, useEffect } from "react";
 import "../styles/PricingAndContact.css";
+import rateService from "../services/rateService";
 
 export default function PricingAndContact() {
+    const [rates, setRates] = useState({});
+
+    useEffect(() => {
+      const currentRates = rateService.getRates();
+      setRates(currentRates);
+    }, []);
+
     return (
       <section className="pricing-contact-section">
         <h2>Pricing & Contact</h2>
   
         <div className="pricing-info">
-          <h3>Pricing</h3>
+          <h3>Team Pricing</h3>
           <ul>
-            <li>Basic Lawn Mowing - $40 / visit</li>
-            <li>Full Landscaping Service - $120 / visit</li>
-            <li>Seasonal Cleanup - $80 / visit</li>
+            <li>2-Man Team - ${rates.twoMan?.low} - ${rates.twoMan?.high}/hour</li>
+            <li>3-Man Team - ${rates.threeMan?.low} - ${rates.threeMan?.high}/hour</li>
+            <li>4-Man Team - ${rates.fourMan?.low} - ${rates.fourMan?.high}/hour</li>
           </ul>
+          <p><em>Rates vary based on job complexity and duration</em></p>
         </div>
   
         <div className="contact-info">

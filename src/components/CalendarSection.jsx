@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/CalendarSection.css";
+import mongoService from "../services/mongoService";
 
 export default function CalendarSection() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -8,30 +9,57 @@ export default function CalendarSection() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Mock function to simulate fetching availability from MongoDB
+    // Initialize MongoDB connection and fetch availability
+    mongoService.connect();
     fetchAvailability();
   }, [currentDate]);
 
   const fetchAvailability = async () => {
-    // This would be replaced with actual API call to MongoDB
-    // For now, we'll simulate daily availability with integer counts
-    const mockDailyAvailability = new Map();
-    const today = new Date();
-    
-    // Generate availability for next 2 weeks
-    for (let i = 1; i <= 14; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
+    try {
+      const availability = new Map();
+      const today = new Date();
       
-      // Skip Sundays (business closed)
-      if (date.getDay() !== 0) {
-        // Random availability: 0-1 bookings available per day (base of 1)
-        const availableCount = Math.random() > 0.3 ? 1 : 0;
-        mockDailyAvailability.set(date.toDateString(), availableCount);
+      // Generate availability for next 2 weeks
+      for (let i = 1; i <= 14; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        
+        // Skip Sundays (business closed)
+        if (date.getDay() !== 0) {
+          // Fetch availability from MongoDB
+          const result = await mongoService.getCalendarAvailability(date);
+          
+          if (result.success && result.availability) {
+            const dayAvailability = result.availability;
+            const availableSlots = dayAvailability.availability.maxBookings - dayAvailability.availability.currentBookings;
+            availability.set(date.toDateString(), Math.max(0, availableSlots));
+          } else {
+            // Default to 1 available slot if no data
+            availability.set(date.toDateString(), 1);
+          }
+        }
       }
+      
+      setDailyAvailability(availability);
+    } catch (error) {
+      console.error('Error fetching calendar availability:', error);
+      
+      // Fallback to mock data
+      const mockDailyAvailability = new Map();
+      const today = new Date();
+      
+      for (let i = 1; i <= 14; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        
+        if (date.getDay() !== 0) {
+          const availableCount = Math.random() > 0.3 ? 1 : 0;
+          mockDailyAvailability.set(date.toDateString(), availableCount);
+        }
+      }
+      
+      setDailyAvailability(mockDailyAvailability);
     }
-    
-    setDailyAvailability(mockDailyAvailability);
   };
 
   const getDaysInMonth = (date) => {

@@ -71,9 +71,9 @@ export default function HeroCarousel() {
         }}
       >
         <h1 style={{ 
-          fontSize: "clamp(2rem, 5.5vw, 3.5rem)", 
+          fontSize: "clamp(1.5rem, 4.5vw, 3.5rem)", 
           marginBottom: "0.5rem",
-          lineHeight: "1.2",
+          lineHeight: "1.1",
           fontWeight: "800",
           letterSpacing: "-0.02em",
           textShadow: "0 6px 16px rgba(0,0,0,0.9), 0 3px 6px rgba(0,0,0,0.8)"
@@ -81,11 +81,12 @@ export default function HeroCarousel() {
           Local Student-Powered Landscaping
         </h1>
         <p style={{ 
-          fontSize: "clamp(1.1rem, 3.2vw, 1.7rem)", 
+          fontSize: "clamp(0.8rem, 2.2vw, 1.7rem)", 
           marginBottom: "1.5rem",
           fontWeight: "500",
           letterSpacing: "0.01em",
-          textShadow: "0 4px 12px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8)"
+          textShadow: "0 4px 12px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8)",
+          lineHeight: "1.2"
         }}>
           Reliable. Affordable. We're your neighbors.
         </p>
