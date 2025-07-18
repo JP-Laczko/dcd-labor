@@ -1,5 +1,5 @@
 [build]
-  command = "node_modules/.bin/vite build"
+  command = "npx vite build"
   functions = "netlify/functions"
   publish = "dist"
 
