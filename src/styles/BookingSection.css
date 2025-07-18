@@ -29,10 +29,24 @@
   
   .services-showcase {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 32px;
     margin: 40px 0;
     max-width: 100%;
+  }
+
+  /* Mobile responsive adjustments for service cards */
+  @media (max-width: 400px) {
+    .services-showcase {
+      grid-template-columns: 1fr;
+      gap: 20px;
+      padding: 0 10px;
+    }
+    
+    .service-showcase-card {
+      padding: 20px;
+      margin: 0;
+    }
   }
   
   .service-showcase-card {
