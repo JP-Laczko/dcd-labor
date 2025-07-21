@@ -1,7 +1,5 @@
 # MongoDB Schema Design for DCD Labor Scheduling
 
-## Recommended Schema with Validation
-
 ### 1. Time Slots Collection
 ```javascript
 // Collection: timeSlots

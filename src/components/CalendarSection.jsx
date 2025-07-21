@@ -10,55 +10,95 @@ export default function CalendarSection() {
 
   useEffect(() => {
     // Initialize MongoDB connection and fetch availability
-    mongoService.connect();
-    fetchAvailability();
+    const initializeCalendar = async () => {
+      console.log('📅 CalendarSection: Initializing calendar...');
+      try {
+        const connectionResult = await mongoService.connect();
+        console.log('📅 CalendarSection: MongoDB connection result:', connectionResult);
+        await fetchAvailability();
+      } catch (error) {
+        console.error('📅 CalendarSection: Initialization error:', error);
+        await fetchAvailability(); // Try to fetch anyway (will use localStorage fallback)
+      }
+    };
+    
+    initializeCalendar();
   }, [currentDate]);
 
   const fetchAvailability = async () => {
     try {
+      // Step 1: Start with all days unavailable (0)
       const availability = new Map();
       const today = new Date();
       
-      // Generate availability for next 2 weeks
+      // Initialize next 2 weeks as unavailable
       for (let i = 1; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
-        
-        // Skip Sundays (business closed)
-        if (date.getDay() !== 0) {
-          // Fetch availability from MongoDB
-          const result = await mongoService.getCalendarAvailability(date);
-          
-          if (result.success && result.availability) {
-            const dayAvailability = result.availability;
-            const availableSlots = dayAvailability.availability.maxBookings - dayAvailability.availability.currentBookings;
-            availability.set(date.toDateString(), Math.max(0, availableSlots));
-          } else {
-            // Default to 1 available slot if no data
-            availability.set(date.toDateString(), 1);
-          }
-        }
+        const dateString = date.toISOString().split('T')[0];
+        availability.set(dateString, 0); // Start unavailable
       }
       
+      // Step 2: Get all calendar availability entries
+      const calendarResult = await mongoService.getAllCalendarAvailability();
+      console.log('📅 Calendar availability data:', calendarResult);
+      
+      const allowedBookingsPerDay = new Map();
+      if (calendarResult.success && calendarResult.availability) {
+        calendarResult.availability.forEach(entry => {
+          allowedBookingsPerDay.set(entry.date, entry.bookings || 0);
+        });
+      }
+      
+      // Step 3: Get all bookings and count actual bookings per day
+      const bookingsResult = await mongoService.getBookings();
+      console.log('📅 Bookings data:', bookingsResult);
+      
+      const actualBookingsPerDay = new Map();
+      if (bookingsResult.success && bookingsResult.bookings) {
+        bookingsResult.bookings.forEach(booking => {
+          const bookingDate = booking.service?.date || booking.date;
+          if (bookingDate) {
+            const dateString = new Date(bookingDate).toISOString().split('T')[0];
+            const currentCount = actualBookingsPerDay.get(dateString) || 0;
+            actualBookingsPerDay.set(dateString, currentCount + 1);
+          }
+        });
+      }
+      
+      // Step 4: Mark days available if actual bookings < allowed bookings
+      for (let i = 1; i <= 14; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dateString = new Date(date).toISOString().split('T')[0];
+        
+        const allowedBookings = allowedBookingsPerDay.get(dateString) || 0;
+        const actualBookings = actualBookingsPerDay.get(dateString) || 0;
+        
+        // Available if actual bookings < allowed bookings AND allowedBookings > 0
+        const isAvailable = (allowedBookings > 0 && actualBookings < allowedBookings) ? 1 : 0;
+        
+        // Use consistent date format (ISO string)
+        availability.set(dateString, isAvailable);
+      }
+      
+      console.log('📅 Final availability for next 14 days:', Object.fromEntries(availability));
       setDailyAvailability(availability);
     } catch (error) {
-      console.error('Error fetching calendar availability:', error);
+      console.error('❌ Calendar: Error fetching calendar availability:', error);
       
-      // Fallback to mock data
-      const mockDailyAvailability = new Map();
+      // Fallback: all days unavailable
+      const fallbackAvailability = new Map();
       const today = new Date();
       
       for (let i = 1; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
-        
-        if (date.getDay() !== 0) {
-          const availableCount = Math.random() > 0.3 ? 1 : 0;
-          mockDailyAvailability.set(date.toDateString(), availableCount);
-        }
+        const dateString = date.toISOString().split('T')[0];
+        fallbackAvailability.set(dateString, 0); // All unavailable on error
       }
       
-      setDailyAvailability(mockDailyAvailability);
+      setDailyAvailability(fallbackAvailability);
     }
   };
 
@@ -92,7 +132,8 @@ export default function CalendarSection() {
   };
 
   const hasAvailability = (date) => {
-    return dailyAvailability.has(date.toDateString()) && dailyAvailability.get(date.toDateString()) > 0;
+    const dateString = date.toISOString().split('T')[0];
+    return dailyAvailability.has(dateString) && dailyAvailability.get(dateString) > 0;
   };
 
   const isPastDate = (date) => {

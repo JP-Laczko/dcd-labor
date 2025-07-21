@@ -8,30 +8,50 @@ class MongoService {
   constructor() {
     this.isConnected = false;
     this.db = null;
+    this.client = null;
     this.collections = {
       bookings: 'bookings',
       calendar: 'calendar_availability',
-      rates: 'team_rates',
-      admins: 'admin_users'
+      rates: 'team_rates'
     };
   }
 
-  // Initialize connection (placeholder - would use MongoDB driver in production)
+  // Initialize connection to MongoDB
   async connect() {
     try {
-      // In a real app, this would connect to MongoDB
-      // For now, we'll simulate connection and use localStorage as fallback
-      
       if (MONGODB_URI === 'mongodb://localhost:27017') {
         console.log('MongoDB not configured, using localStorage fallback');
         this.isConnected = false;
         return false;
       }
       
-      // Placeholder for actual MongoDB connection
       console.log('Connecting to MongoDB:', MONGODB_URI);
-      this.isConnected = true;
-      return true;
+      
+      // For browser-based applications, we need to use a different approach
+      // Since MongoDB driver doesn't work in browsers, we'll use fetch to a backend API
+      // For now, we'll simulate connection but keep the queries as placeholders
+      
+      try {
+        // Test connection by making a health check request to the backend API
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/health`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          console.log('✅ Successfully connected to backend API');
+          this.isConnected = true;
+          return true;
+        } else {
+          throw new Error(`Backend health check failed: ${response.status}`);
+        }
+      } catch (connectionError) {
+        console.error('❌ Failed to connect to MongoDB backend:', connectionError);
+        this.isConnected = false;
+        return false;
+      }
     } catch (error) {
       console.error('MongoDB connection error:', error);
       this.isConnected = false;
@@ -119,32 +139,92 @@ class MongoService {
 
   async getBookings(filters = {}) {
     try {
+      console.log('🗄️ getBookings called with filters:', filters);
+      console.log('🗄️ isConnected:', this.isConnected);
+      
       if (this.isConnected) {
-        // Real MongoDB query would go here
-        console.log('Fetching bookings from MongoDB with filters:', filters);
-        return { success: true, bookings: [] };
+        console.log('🗄️ Fetching bookings from MongoDB with filters:', filters);
+        try {
+          // Build query parameters
+          const queryParams = new URLSearchParams();
+          if (filters.date) queryParams.append('date', filters.date);
+          if (filters.status) queryParams.append('status', filters.status);
+          if (filters.email) queryParams.append('email', filters.email);
+          
+          const url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/bookings${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+          
+          // Make API call to backend that connects to MongoDB
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log('🗄️ MongoDB bookings response:', data);
+          return { success: true, bookings: data };
+        } catch (apiError) {
+          console.error('🗄️ API call failed, falling back to localStorage:', apiError);
+          // Fall back to localStorage if API fails
+          this.isConnected = false;
+          // Prevent infinite loop by calling localStorage directly
+          let bookings = this.getLocalBookings();
+          
+          // Apply filters directly here
+          if (filters.date) {
+            const filterDate = new Date(filters.date).toDateString();
+            bookings = bookings.filter(b => new Date(b.service.date).toDateString() === filterDate);
+          }
+          if (filters.status) {
+            bookings = bookings.filter(b => b.status.current === filters.status);
+          }
+          if (filters.email) {
+            bookings = bookings.filter(b => b.customer.email === filters.email);
+          }
+          
+          return { success: true, bookings };
+        }
       } else {
         // Fallback to localStorage
+        console.log('🗄️ Using localStorage fallback for bookings');
         let bookings = this.getLocalBookings();
+        console.log('🗄️ Raw bookings from localStorage:', bookings);
+        console.log('🗄️ Bookings count:', bookings.length);
+        
+        // Log each booking structure
+        bookings.forEach((booking, index) => {
+          console.log(`🗄️ Booking ${index}:`, booking);
+          console.log(`🗄️ Booking ${index} service date:`, booking.service?.date);
+          console.log(`🗄️ Booking ${index} direct date:`, booking.date);
+        });
         
         // Apply filters
         if (filters.date) {
           const filterDate = new Date(filters.date).toDateString();
           bookings = bookings.filter(b => new Date(b.service.date).toDateString() === filterDate);
+          console.log('🗄️ After date filter:', bookings.length);
         }
         
         if (filters.status) {
           bookings = bookings.filter(b => b.status.current === filters.status);
+          console.log('🗄️ After status filter:', bookings.length);
         }
         
         if (filters.email) {
           bookings = bookings.filter(b => b.customer.email === filters.email);
+          console.log('🗄️ After email filter:', bookings.length);
         }
         
+        console.log('🗄️ Final filtered bookings:', bookings);
         return { success: true, bookings };
       }
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.error('❌ Error fetching bookings:', error);
       return { success: false, error: error.message };
     }
   }
@@ -182,104 +262,172 @@ class MongoService {
   }
 
   // CALENDAR OPERATIONS
-  async getCalendarAvailability(date) {
+  // Get all calendar availability entries (for admin page)
+  async getAllCalendarAvailability() {
     try {
-      const dateString = new Date(date).toISOString().split('T')[0];
+      console.log('🗄️ getAllCalendarAvailability called');
+      console.log('🗄️ isConnected:', this.isConnected);
       
       if (this.isConnected) {
-        // Real MongoDB query would go here
-        console.log('Fetching calendar availability from MongoDB:', dateString);
-        return { success: true, availability: null };
-      } else {
-        // Fallback to localStorage
-        const calendar = this.getLocalCalendar();
-        const dayAvailability = calendar[dateString];
-        
-        return { 
-          success: true, 
-          availability: dayAvailability || {
-            date: new Date(date),
-            dateString: dateString,
-            availability: {
-              maxBookings: 1,
-              currentBookings: 0,
-              isAvailable: true,
-              crewAvailability: {
-                twoMan: 1,
-                threeMan: 1,
-                fourMan: 1
-              }
-            },
-            businessRules: {
-              isDayOff: new Date(date).getDay() === 0, // Sunday
-              isBlocked: false,
-              blockReason: null,
-              weather: null,
-              specialNotes: null
-            },
-            bookings: [],
-            metadata: {
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              lastModifiedBy: 'system'
+        console.log('🗄️ Fetching all calendar availability from MongoDB');
+        try {
+          // Make API call to backend that connects to MongoDB
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/calendar-availability`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
             }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
-        };
+          
+          const data = await response.json();
+          console.log('🗄️ MongoDB calendar availability response:', data);
+          return { success: true, availability: data };
+        } catch (apiError) {
+          console.error('🗄️ API call failed, falling back to localStorage:', apiError);
+          // Fall back to localStorage if API fails
+          this.isConnected = false;
+          // Prevent infinite loop by calling localStorage directly
+          const calendar = this.getLocalCalendar();
+          const availabilityArray = Array.isArray(calendar) ? calendar : 
+            Object.keys(calendar).map(dateString => ({
+              date: dateString,
+              bookings: calendar[dateString].bookings || calendar[dateString] || 0
+            }));
+          return { success: true, availability: availabilityArray };
+        }
+      } else {
+        // Fallback to localStorage - updated to match MongoDB structure
+        console.log('🗄️ Using localStorage fallback for all availability');
+        const calendar = this.getLocalCalendar();
+        console.log('🗄️ Local calendar data:', calendar);
+        
+        // Updated: localStorage now stores direct array format like MongoDB
+        // localStorage format: [{ date: "2025-07-23", bookings: 1 }, ...]
+        const availabilityArray = Array.isArray(calendar) ? calendar : 
+          Object.keys(calendar).map(dateString => ({
+            date: dateString,
+            bookings: calendar[dateString].bookings || calendar[dateString] || 0
+          }));
+        
+        console.log('🗄️ Converted to array:', availabilityArray);
+        return { success: true, availability: availabilityArray };
       }
     } catch (error) {
-      console.error('Error fetching calendar availability:', error);
+      console.error('❌ Error fetching all calendar availability:', error);
       return { success: false, error: error.message };
     }
   }
 
-  async updateCalendarAvailability(date, bookingChange = 0) {
+  async getCalendarAvailability(date) {
+    try {
+      const dateString = new Date(date).toISOString().split('T')[0];
+      console.log('🗄️ getCalendarAvailability called for:', dateString);
+      console.log('🗄️ isConnected:', this.isConnected);
+      
+      if (this.isConnected) {
+        // Real MongoDB query would go here
+        console.log('🗄️ Fetching calendar availability from MongoDB:', dateString);
+        return { success: true, availability: null };
+      } else {
+        // Fallback to localStorage with simplified structure
+        console.log('🗄️ Using localStorage fallback');
+        const calendar = this.getLocalCalendar();
+        console.log('🗄️ Local calendar data:', calendar);
+        const dayAvailability = calendar[dateString];
+        // Check day availability
+        
+        const result = { 
+          success: true, 
+          availability: dayAvailability ? {
+            date: dateString,
+            bookings: dayAvailability.bookings || dayAvailability || 0
+          } : null
+        };
+        console.log('🗄️ Returning result:', result);
+        return result;
+      }
+    } catch (error) {
+      console.error('❌ Error fetching calendar availability:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateCalendarAvailability(date, bookingChange = 0, crewCount = null) {
     try {
       const dateString = new Date(date).toISOString().split('T')[0];
       
       if (this.isConnected) {
-        // Real MongoDB operation would go here
-        console.log('Updating calendar availability in MongoDB:', dateString, bookingChange);
-        return { success: true };
+        console.log('🗄️ Updating calendar availability in MongoDB:', dateString, { bookingChange, crewCount });
+        try {
+          // Prepare request body based on parameters
+          const requestBody = { date: dateString };
+          if (crewCount !== null) {
+            requestBody.crewCount = crewCount;
+          } else {
+            requestBody.bookingChange = bookingChange;
+          }
+          
+          // Make API call to update MongoDB
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/calendar-availability`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log('🗄️ MongoDB update response:', data);
+          return { success: true };
+        } catch (apiError) {
+          console.error('🗄️ API call failed, falling back to localStorage:', apiError);
+          this.isConnected = false;
+          return this.updateCalendarAvailability(date, bookingChange, crewCount);
+        }
       } else {
-        // Fallback to localStorage
-        const calendar = this.getLocalCalendar();
+        // Fallback to localStorage using new array format
+        console.log('🗄️ Updating localStorage calendar availability');
+        let calendar = this.getLocalCalendar();
         
-        if (!calendar[dateString]) {
-          calendar[dateString] = {
-            date: new Date(date),
-            dateString: dateString,
-            availability: {
-              maxBookings: 1,
-              currentBookings: 0,
-              isAvailable: true,
-              crewAvailability: { twoMan: 1, threeMan: 1, fourMan: 1 }
-            },
-            businessRules: {
-              isDayOff: new Date(date).getDay() === 0,
-              isBlocked: false,
-              blockReason: null,
-              weather: null,
-              specialNotes: null
-            },
-            bookings: [],
-            metadata: {
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              lastModifiedBy: 'system'
-            }
-          };
+        // Ensure calendar is in array format
+        if (!Array.isArray(calendar)) {
+          calendar = [];
         }
         
-        calendar[dateString].availability.currentBookings += bookingChange;
-        calendar[dateString].availability.isAvailable = 
-          calendar[dateString].availability.currentBookings < calendar[dateString].availability.maxBookings;
-        calendar[dateString].metadata.updatedAt = new Date();
+        // Find existing entry or create new one
+        let existingEntry = calendar.find(entry => entry.date === dateString);
         
+        if (!existingEntry) {
+          existingEntry = {
+            date: dateString,
+            bookings: 1 // Default to 1 allowed booking
+          };
+          calendar.push(existingEntry);
+        }
+        
+        // Update the bookings count
+        if (crewCount !== null) {
+          // Absolute crew count setting
+          existingEntry.bookings = Math.max(0, crewCount);
+        } else {
+          // Relative booking change
+          existingEntry.bookings = Math.max(0, existingEntry.bookings + bookingChange);
+        }
+        
+        console.log('🗄️ Updated calendar entry:', existingEntry);
         localStorage.setItem('dcd_calendar', JSON.stringify(calendar));
         return { success: true };
       }
     } catch (error) {
-      console.error('Error updating calendar availability:', error);
+      console.error('❌ Error updating calendar availability:', error);
       return { success: false, error: error.message };
     }
   }
@@ -319,9 +467,26 @@ class MongoService {
   async getRates() {
     try {
       if (this.isConnected) {
-        // Real MongoDB query would go here
-        console.log('Fetching rates from MongoDB');
-        return { success: true, rates: null };
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/team-rates`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          return { success: true, rates: data };
+        } catch (apiError) {
+          console.error('API call failed, falling back to localStorage:', apiError);
+          this.isConnected = false;
+          const rates = JSON.parse(localStorage.getItem('teamRates') || '{}');
+          return { success: true, rates };
+        }
       } else {
         // Fallback to localStorage (existing rateService)
         const rates = JSON.parse(localStorage.getItem('teamRates') || '{}');
@@ -336,9 +501,27 @@ class MongoService {
   async updateRates(newRates) {
     try {
       if (this.isConnected) {
-        // Real MongoDB operation would go here
-        console.log('Updating rates in MongoDB:', newRates);
-        return { success: true };
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/team-rates`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newRates)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          return { success: true };
+        } catch (apiError) {
+          console.error('API call failed, falling back to localStorage:', apiError);
+          this.isConnected = false;
+          localStorage.setItem('teamRates', JSON.stringify(newRates));
+          return { success: true };
+        }
       } else {
         // Fallback to localStorage (existing rateService)
         localStorage.setItem('teamRates', JSON.stringify(newRates));
@@ -352,11 +535,18 @@ class MongoService {
 
   // UTILITY METHODS
   getLocalBookings() {
-    return JSON.parse(localStorage.getItem('dcd_bookings') || '[]');
+    const bookingsStr = localStorage.getItem('dcd_bookings') || '[]';
+    console.log('🗄️ localStorage dcd_bookings raw string:', bookingsStr);
+    const bookings = JSON.parse(bookingsStr);
+    console.log('🗄️ getLocalBookings parsed result:', bookings);
+    console.log('🗄️ getLocalBookings count:', bookings.length);
+    return bookings;
   }
 
   getLocalCalendar() {
-    return JSON.parse(localStorage.getItem('dcd_calendar') || '{}');
+    const calendar = JSON.parse(localStorage.getItem('dcd_calendar') || '{}');
+    console.log('🗄️ getLocalCalendar returning:', calendar);
+    return calendar;
   }
 
   // Initialize sample data for testing
