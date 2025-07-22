@@ -1013,18 +1013,20 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// Start server
-async function startServer() {
-  await connectToMongo();
-  
+// Initialize MongoDB connection
+connectToMongo().catch(console.error);
+
+// For Vercel, export the app
+export default app;
+
+// For local development, start the server
+if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🚀 DCD Labor API server running on port ${PORT}`);
     console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
     console.log(`📡 Health check: http://localhost:${PORT}/api/health`);
   });
 }
-
-startServer().catch(console.error);
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
