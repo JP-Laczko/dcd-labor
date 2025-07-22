@@ -91,6 +91,10 @@ app.get('/api/health', (req, res) => {
 // GET /api/calendar-availability - Get all calendar availability
 app.get('/api/calendar-availability', async (req, res) => {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const collection = db.collection('calendar_availability');
     const documents = await collection.find({}).toArray();
     
@@ -112,6 +116,10 @@ app.get('/api/calendar-availability', async (req, res) => {
 // PUT /api/calendar-availability - Update calendar availability
 app.put('/api/calendar-availability', async (req, res) => {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const { date, bookingChange, crewCount } = req.body;
     console.log(`📅 PUT /api/calendar-availability - Date: ${date}, Change: ${bookingChange}, CrewCount: ${crewCount}`);
     
@@ -166,6 +174,10 @@ app.put('/api/calendar-availability', async (req, res) => {
 // GET /api/bookings - Get all bookings with optional filters
 app.get('/api/bookings', async (req, res) => {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const { date, status, email } = req.query;
     
     const collection = db.collection('bookings');
@@ -196,6 +208,10 @@ app.get('/api/bookings', async (req, res) => {
 // POST /api/bookings - Create new booking
 app.post('/api/bookings', async (req, res) => {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const bookingData = req.body;
     console.log('📋 POST /api/bookings - Data:', bookingData);
     
@@ -222,6 +238,10 @@ app.post('/api/bookings', async (req, res) => {
 // PUT /api/bookings/:id - Update existing booking
 app.put('/api/bookings/:id', async (req, res) => {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const { id } = req.params;
     const bookingData = req.body;
     console.log('📋 PUT /api/bookings/:id - ID:', id, 'Data:', bookingData);
@@ -266,6 +286,10 @@ app.put('/api/bookings/:id', async (req, res) => {
 // DELETE /api/bookings/:id - Delete booking
 app.delete('/api/bookings/:id', async (req, res) => {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const { id } = req.params;
     console.log('📋 DELETE /api/bookings/:id - ID:', id);
     
@@ -290,6 +314,10 @@ app.delete('/api/bookings/:id', async (req, res) => {
 // GET /api/team-rates - Get team rates
 app.get('/api/team-rates', async (req, res) => {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const collection = db.collection('team_rates');
     const document = await collection.findOne({});
     
@@ -317,6 +345,10 @@ app.get('/api/team-rates', async (req, res) => {
 // PUT /api/team-rates - Update team rates
 app.put('/api/team-rates', async (req, res) => {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const rates = req.body;
     console.log('💰 PUT /api/team-rates - Data:', rates);
     
@@ -669,6 +701,10 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
 // Helper function to get rate range based on crew size from database
 async function getRateRange(crewSize) {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const collection = db.collection('team_rates');
     const ratesDoc = await collection.findOne({});
     
