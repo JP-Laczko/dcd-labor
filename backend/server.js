@@ -374,6 +374,10 @@ app.put('/api/team-rates', async (req, res) => {
 // POST /api/send-email - Send booking confirmation emails
 app.post('/api/send-email', async (req, res) => {
   try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
     const { bookingData } = req.body;
     console.log('📧 POST /api/send-email - Data:', bookingData);
     
