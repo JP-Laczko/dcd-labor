@@ -49,8 +49,7 @@ const getFrontendUrl = () => {
   if (process.env.NODE_ENV === 'production') {
     // Allow multiple production origins
     const allowedOrigins = [
-      process.env.FRONTEND_URL,
-      'https://admirable-croissant-c6f255.netlify.app'
+      process.env.FRONTEND_URL
     ].filter(Boolean);
     return allowedOrigins.length > 1 ? allowedOrigins : allowedOrigins[0];
   }
