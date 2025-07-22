@@ -25,7 +25,20 @@ export default function Footer() {
         
         <div className="footer-info">
           <p>&copy; 2024 DCD Labor. All rights reserved.</p>
-          <p>Local. Reliable. Trusted.</p>
+          <p className="tagline">Local. Reliable. Trusted.</p>
+          <div className="developer-credit">
+            <p className="developer-highlight">
+              ⚡ Premium full-stack website built by{' '}
+              <a 
+                href="https://jpldev.co" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="developer-link"
+              >
+                <strong>JPLDev.co</strong>
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </footer>

@@ -117,9 +117,28 @@ class MongoService {
       };
 
       if (this.isConnected) {
-        // Real MongoDB operation would go here
+        // Real MongoDB operation - POST to backend API
         console.log('Saving booking to MongoDB:', booking);
-        return { success: true, booking };
+        
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/bookings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(booking)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('MongoDB save result:', result);
+        
+        // Update calendar availability
+        await this.updateCalendarAvailability(booking.service.date, 1);
+        
+        return { success: true, booking: result };
       } else {
         // Fallback to localStorage
         const bookings = this.getLocalBookings();
@@ -571,6 +590,97 @@ class MongoService {
       return { success: true };
     } catch (error) {
       console.error('Error initializing sample data:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Update existing booking
+  async updateBooking(bookingId, bookingData) {
+    try {
+      if (this.isConnected) {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/bookings/${bookingId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(bookingData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('MongoDB update result:', result);
+        return { success: true, booking: result };
+      } else {
+        // Fallback to localStorage
+        const bookings = this.getLocalBookings();
+        const bookingIndex = bookings.findIndex(b => b.bookingId === bookingId);
+        
+        if (bookingIndex === -1) {
+          return { success: false, error: 'Booking not found' };
+        }
+
+        const updatedBooking = {
+          ...bookings[bookingIndex],
+          customer: {
+            name: bookingData.name,
+            email: bookingData.email,
+            phone: bookingData.phone,
+            address: bookingData.address
+          },
+          service: {
+            ...bookings[bookingIndex].service,
+            date: new Date(bookingData.date),
+            crewSize: parseInt(bookingData.crewSize),
+            yardAcreage: bookingData.yardAcreage,
+            services: bookingData.services,
+            notes: bookingData.notes || ''
+          },
+          updatedAt: new Date()
+        };
+
+        bookings[bookingIndex] = updatedBooking;
+        localStorage.setItem('dcd_bookings', JSON.stringify(bookings));
+        
+        return { success: true, booking: updatedBooking };
+      }
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Delete booking
+  async deleteBooking(bookingId) {
+    try {
+      if (this.isConnected) {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/bookings/${bookingId}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('MongoDB delete result:', result);
+        return { success: true };
+      } else {
+        // Fallback to localStorage
+        const bookings = this.getLocalBookings();
+        const filteredBookings = bookings.filter(b => b.bookingId !== bookingId);
+        
+        if (filteredBookings.length === bookings.length) {
+          return { success: false, error: 'Booking not found' };
+        }
+
+        localStorage.setItem('dcd_bookings', JSON.stringify(filteredBookings));
+        return { success: true };
+      }
+    } catch (error) {
+      console.error('Error deleting booking:', error);
       return { success: false, error: error.message };
     }
   }

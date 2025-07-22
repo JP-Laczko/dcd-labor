@@ -177,12 +177,23 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
 }
 
 .day-number {
   font-weight: bold;
-  margin-bottom: 5px;
   color: #333;
+  font-size: 16px;
+  min-width: fit-content;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  background: rgba(255,255,255,0.9);
+  border-radius: 4px;
+  padding: 2px;
+  z-index: 10;
 }
 
 .booking-availability {
@@ -306,45 +317,202 @@
   
   .calendar-section,
   .rates-section {
-    padding: 12px;
+    padding: 15px;
     max-width: 100%;
     overflow-x: auto;
   }
   
+  .calendar-section h2 {
+    font-size: 18px;
+    margin-bottom: 15px;
+  }
+  
+  .calendar-header {
+    margin-bottom: 15px;
+  }
+  
+  .calendar-header h3 {
+    font-size: 16px;
+  }
+  
+  .nav-button {
+    padding: 6px 10px;
+    font-size: 16px;
+  }
+  
   .calendar-grid {
-    font-size: 9px;
     gap: 1px;
     max-width: 100%;
+    min-width: 100%;
   }
   
   .day-header {
-    padding: 4px 1px;
-    font-size: 9px;
+    padding: 8px 4px;
+    font-size: 12px;
     text-align: center;
     word-break: break-word;
     min-width: 0;
+    font-weight: bold;
   }
   
   .calendar-day {
-    min-height: 45px;
-    padding: 1px;
-    font-size: 9px;
+    min-height: 120px;
+    padding: 3px;
+    font-size: 8px;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
   }
   
-  .day-number {
-    font-size: 10px;
+  .calendar-day .day-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Move day number to top of calendar cell - FIXED POSITION */
+  .calendar-day .day-number {
+    font-size: 18px;
+    font-weight: bold;
+    color: #000;
+    text-align: center;
+    background: rgba(255,255,255,0.9);
+    border-radius: 4px;
+    padding: 1px 3px;
+    line-height: 1;
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    right: 3px;
+    z-index: 10;
+  }
+  
+  .calendar-day .day-header {
+    padding: 0;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 2px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 25px;
+    left: 3px;
+    right: 3px;
+    z-index: 9;
+  }
+  
+  .slots-available {
+    font-size: 7px;
+    padding: 2px 4px;
+    background: #e8f5e8;
+    border-radius: 6px;
+    text-align: center;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+  }
+
+  .crew-label {
+    font-size: 6px;
+    color: #666;
     margin-bottom: 1px;
   }
+
+  .crew-number {
+    font-size: 8px;
+    font-weight: bold;
+    color: #333;
+  }
   
-  .bookings-count {
+  .bookings-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 4px;
+    margin-top: 45px; /* Space for fixed day number and crew header */
+    padding-top: 2px;
+  }
+  
+  .booking-item {
+    margin-bottom: 2px;
+    padding: 2px;
+    font-size: 7px;
+    position: relative;
+  }
+  
+  .customer-name {
     font-size: 8px;
     margin-bottom: 1px;
+    font-weight: bold;
+    line-height: 1;
   }
   
-  .adjust-bookings {
-    padding: 1px 3px;
+  .booking-details {
+    gap: 1px;
+    display: none; /* Hide details by default on mobile */
+  }
+  
+  .crew-size,
+  .services {
+    font-size: 6px;
+    line-height: 1;
+  }
+  
+  .booking-status {
+    font-size: 6px;
+    display: none; /* Hide status by default on mobile */
+    line-height: 1;
+  }
+  
+  .no-bookings {
     font-size: 7px;
+    padding: 3px;
+    text-align: center;
+  }
+
+  /* Mobile booking count indicator */
+  .mobile-booking-count {
+    background: #3b82f6;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    margin: 2px auto;
+    cursor: pointer;
+  }
+
+  /* Mobile booking summary */
+  .mobile-booking-summary {
+    display: block;
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  .booking-count-text {
+    font-size: 9px;
+    color: #666;
+    font-weight: bold;
+  }
+
+  /* Show details on tap for mobile */
+  .booking-item.expanded .booking-details,
+  .booking-item.expanded .booking-status {
+    display: block;
+  }
+
+  .booking-item.expanded {
+    background: #e3f2fd;
+    border: 1px solid #2196f3;
+    border-radius: 4px;
+    z-index: 10;
+    position: relative;
   }
   
   .rate-inputs {
@@ -381,30 +549,66 @@
     font-size: 16px;
   }
   
-  .calendar-grid {
-    font-size: 8px;
+  .calendar-section,
+  .rates-section {
+    padding: 10px;
+  }
+  
+  .calendar-header h3 {
+    font-size: 14px;
+  }
+  
+  .nav-button {
+    padding: 4px 8px;
+    font-size: 14px;
   }
   
   .day-header {
-    font-size: 8px;
-    padding: 3px 1px;
+    font-size: 10px;
+    padding: 6px 2px;
   }
   
   .calendar-day {
-    min-height: 40px;
-    font-size: 8px;
+    min-height: 100px;
+    padding: 4px;
+    font-size: 10px;
   }
   
   .day-number {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .slots-available {
+    font-size: 8px;
+    padding: 2px 3px;
+    background: #e8f5e8;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  
+  .booking-item {
+    padding: 3px;
+    font-size: 8px;
+  }
+  
+  .customer-name {
     font-size: 9px;
   }
   
-  .bookings-count {
+  .crew-size,
+  .services {
     font-size: 7px;
   }
   
-  .adjust-bookings {
-    font-size: 6px;
+  .booking-status {
+    font-size: 7px;
+  }
+  
+  .no-bookings {
+    font-size: 8px;
+    padding: 4px;
   }
 }
 
@@ -413,23 +617,47 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
   padding-bottom: 5px;
   border-bottom: 1px solid #eee;
+  min-height: 20px;
+  position: absolute;
+  top: 25px;
+  left: 0;
+  right: 0;
+  z-index: 9;
 }
 
 .slots-available {
-  font-size: 11px;
+  font-size: 10px;
   color: #666;
   background: #e8f5e8;
-  padding: 2px 6px;
+  padding: 3px 6px;
   border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.crew-label {
+  font-size: 8px;
+  color: #666;
+  margin-bottom: 1px;
+}
+
+.crew-number {
+  font-size: 11px;
+  font-weight: bold;
+  color: #333;
 }
 
 .bookings-list {
   flex: 1;
   overflow-y: auto;
   margin-bottom: 8px;
+  margin-top: 50px; /* Space for fixed day number and crew header */
+  padding-top: 4px;
 }
 
 .booking-item {

@@ -6,10 +6,10 @@ import config from '../config/environment.js';
 // Determine the API URL based on environment
 const getApiUrl = () => {
   if (config.isDevelopment) {
-    return 'http://localhost:8888/.netlify/functions';
+    return 'http://localhost:3001/api';
   }
-  // In production, Netlify automatically handles the function URL
-  return '/.netlify/functions';
+  // In production, use deployed backend URL from environment variable
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 };
 
 export const emailService = {

@@ -196,7 +196,7 @@ export default function Schedule() {
         <div className="schedule-container">
           <div className="schedule-header">
             <h1>Schedule Your Service</h1>
-            <p>Fill out the form below to book your landscaping service. We'll contact you to confirm your appointment and process payment.</p>
+            <p>Fill out the form below to book your landscaping service. We'll contact you to confirm your appointment and process an $80 deposit to secure your booking.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="schedule-form">
@@ -344,7 +344,7 @@ export default function Schedule() {
 
             <div className="payment-info">
               <h3>Payment Information</h3>
-              <p>A 50% deposit will be required to confirm your booking. We accept all major credit cards and will process payment securely after we confirm your appointment details.</p>
+              <p>An $80 deposit will be required to confirm your booking. We accept all major credit cards and will process payment securely after we confirm your appointment details.</p>
             </div>
 
             <button type="submit" className="submit-button" disabled={isSubmitting}>

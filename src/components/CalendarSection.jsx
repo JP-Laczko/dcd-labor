@@ -102,6 +102,14 @@ export default function CalendarSection() {
     }
   };
 
+  const handleDateClick = (date) => {
+    if (!date || !hasAvailability(date) || isPastDate(date)) return;
+    
+    const dateString = date.toISOString().split('T')[0];
+    // Navigate to schedule page with pre-filled date
+    navigate(`/schedule?date=${dateString}`);
+  };
+
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -123,13 +131,6 @@ export default function CalendarSection() {
     return days;
   };
 
-  const handleDateClick = (date) => {
-    if (!date || !hasAvailability(date) || isPastDate(date)) return;
-    
-    const dateString = date.toISOString().split('T')[0];
-    // Navigate to schedule page with pre-filled date
-    navigate(`/schedule?date=${dateString}`);
-  };
 
   const hasAvailability = (date) => {
     const dateString = date.toISOString().split('T')[0];
@@ -199,7 +200,12 @@ export default function CalendarSection() {
                   onClick={() => handleDateClick(date)}
                   title={hasSlots ? `Available` : 'No slots available'}
                 >
-                  <span className="day-number">{date.getDate()}</span>
+                  <div className="day-content">
+                    <span className="day-number">{date.getDate()}</span>
+                    <div className="day-icon">
+                      {isPast ? '⏰' : hasSlots ? '✨' : '🚫'}
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -208,11 +214,15 @@ export default function CalendarSection() {
           <div className="calendar-legend">
             <div className="legend-item">
               <div className="legend-color available"></div>
-              <span>Available</span>
+              <span>✨ Available</span>
             </div>
             <div className="legend-item">
               <div className="legend-color unavailable"></div>
-              <span>Unavailable</span>
+              <span>🚫 Unavailable</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color past"></div>
+              <span>⏰ Past</span>
             </div>
           </div>
         </div>
