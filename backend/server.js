@@ -47,7 +47,12 @@ const client = new MongoClient(process.env.MONGODB_URI);
 // Determine frontend URL based on environment
 const getFrontendUrl = () => {
   if (process.env.NODE_ENV === 'production') {
-    return process.env.FRONTEND_URL || 'https://admirable-croissant-c6f255.netlify.app';
+    // Allow multiple production origins
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'https://admirable-croissant-c6f255.netlify.app'
+    ].filter(Boolean);
+    return allowedOrigins.length > 1 ? allowedOrigins : allowedOrigins[0];
   }
   return process.env.FRONTEND_URL || 'http://localhost:5173';
 };
