@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 3001;
 // Initialize Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 console.log('🔑 Resend API Key configured:', process.env.RESEND_API_KEY ? 'Yes' : 'No');
-console.log('📧 DCD Email configured:', process.env.DCD_EMAIL);
+console.log('📧 DCD Email configured:', process.env.DCD_EMAIL ? 'Yes' : 'No');
 
 // Email configuration based on environment
 const getEmailConfig = () => {
@@ -63,27 +63,49 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Connect to MongoDB
+// Connect to MongoDB with retry logic for serverless
 async function connectToMongo() {
   try {
     await client.connect();
     db = client.db(process.env.MONGODB_DB_NAME);
     console.log('✅ Connected to MongoDB successfully');
-    console.log('📊 Database:', process.env.MONGODB_DB_NAME);
+    console.log('📊 Database configured:', process.env.MONGODB_DB_NAME ? 'Yes' : 'No');
+    return true;
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
-    process.exit(1);
+    db = null;
+    return false;
   }
 }
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'DCD Labor API is running',
-    timestamp: new Date().toISOString(),
-    database: db ? 'Connected' : 'Disconnected'
-  });
+// Health check endpoint with database connection test
+app.get('/api/health', async (req, res) => {
+  try {
+    // Try to connect if not already connected
+    if (!db) {
+      await connectToMongo();
+    }
+    
+    // Test the database connection
+    if (db) {
+      await db.admin().ping();
+    }
+    
+    res.json({ 
+      status: 'OK', 
+      message: 'DCD Labor API is running',
+      timestamp: new Date().toISOString(),
+      database: db ? 'Connected' : 'Disconnected'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Health check failed',
+      timestamp: new Date().toISOString(),
+      database: 'Failed',
+      error: error.message
+    });
+  }
 });
 
 // CALENDAR AVAILABILITY ENDPOINTS
@@ -93,7 +115,10 @@ app.get('/api/calendar-availability', async (req, res) => {
   try {
     // Ensure database connection
     if (!db) {
-      await connectToMongo();
+      const connected = await connectToMongo();
+      if (!connected) {
+        return res.status(500).json({ error: 'Database connection failed' });
+      }
     }
     const collection = db.collection('calendar_availability');
     const documents = await collection.find({}).toArray();
@@ -1052,8 +1077,10 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// Initialize MongoDB connection
-connectToMongo().catch(console.error);
+// Initialize MongoDB connection (non-blocking for serverless)
+connectToMongo().catch(error => {
+  console.error('Initial MongoDB connection failed, will retry on first API call:', error);
+});
 
 // For Vercel, export the app
 export default app;
@@ -1062,7 +1089,7 @@ export default app;
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🚀 DCD Labor API server running on port ${PORT}`);
-    console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
+    console.log('🌐 Frontend URL configured:', process.env.FRONTEND_URL ? 'Yes' : 'No');
     console.log(`📡 Health check: http://localhost:${PORT}/api/health`);
   });
 }

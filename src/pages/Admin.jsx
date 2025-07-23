@@ -132,7 +132,7 @@ export default function Admin() {
                   <label>Low Rate ($)</label>
                   <input
                     type="number"
-                    value={rates.twoMan.low}
+                    value={rates.twoMan?.low || ''}
                     onChange={(e) => handleRateChange('twoMan', 'low', e.target.value)}
                   />
                 </div>
@@ -140,7 +140,7 @@ export default function Admin() {
                   <label>High Rate ($)</label>
                   <input
                     type="number"
-                    value={rates.twoMan.high}
+                    value={rates.twoMan?.high || ''}
                     onChange={(e) => handleRateChange('twoMan', 'high', e.target.value)}
                   />
                 </div>
@@ -154,7 +154,7 @@ export default function Admin() {
                   <label>Low Rate ($)</label>
                   <input
                     type="number"
-                    value={rates.threeMan.low}
+                    value={rates.threeMan?.low || ''}
                     onChange={(e) => handleRateChange('threeMan', 'low', e.target.value)}
                   />
                 </div>
@@ -162,7 +162,7 @@ export default function Admin() {
                   <label>High Rate ($)</label>
                   <input
                     type="number"
-                    value={rates.threeMan.high}
+                    value={rates.threeMan?.high || ''}
                     onChange={(e) => handleRateChange('threeMan', 'high', e.target.value)}
                   />
                 </div>
@@ -176,7 +176,7 @@ export default function Admin() {
                   <label>Low Rate ($)</label>
                   <input
                     type="number"
-                    value={rates.fourMan.low}
+                    value={rates.fourMan?.low || ''}
                     onChange={(e) => handleRateChange('fourMan', 'low', e.target.value)}
                   />
                 </div>
@@ -184,7 +184,7 @@ export default function Admin() {
                   <label>High Rate ($)</label>
                   <input
                     type="number"
-                    value={rates.fourMan.high}
+                    value={rates.fourMan?.high || ''}
                     onChange={(e) => handleRateChange('fourMan', 'high', e.target.value)}
                   />
                 </div>

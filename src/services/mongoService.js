@@ -25,7 +25,7 @@ class MongoService {
         return false;
       }
       
-      console.log('Connecting to MongoDB:', MONGODB_URI);
+      console.log('Connecting to MongoDB backend...');
       
       // For browser-based applications, we need to use a different approach
       // Since MongoDB driver doesn't work in browsers, we'll use fetch to a backend API
