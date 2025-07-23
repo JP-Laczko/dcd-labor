@@ -521,12 +521,20 @@
     border-radius: 8px;
   }
 
+  .day-content {
+    justify-content: space-between;
+    padding: 2px 0;
+  }
+
   .day-number {
     font-size: 0.85rem;
+    order: 1;
   }
 
   .day-icon {
     font-size: 0.8rem;
+    order: 2;
+    margin-top: auto;
   }
 
   .calendar-legend {
@@ -603,12 +611,20 @@
     border-radius: 6px;
   }
 
+  .day-content {
+    justify-content: space-between;
+    padding: 1px 0;
+  }
+
   .day-number {
     font-size: 0.8rem;
+    order: 1;
   }
 
   .day-icon {
     font-size: 0.7rem;
+    order: 2;
+    margin-top: auto;
   }
 
   .calendar-legend {
@@ -678,12 +694,20 @@
     border-radius: 4px;
   }
 
+  .day-content {
+    justify-content: space-between;
+    padding: 1px 0;
+  }
+
   .day-number {
     font-size: 0.75rem;
+    order: 1;
   }
 
   .day-icon {
     font-size: 0.6rem;
+    order: 2;
+    margin-top: auto;
   }
 
   .calendar-legend {
