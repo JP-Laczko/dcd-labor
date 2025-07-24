@@ -8,11 +8,7 @@ export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [rates, setRates] = useState({
-    twoMan: { low: 50, high: 70 },
-    threeMan: { low: 75, high: 100 },
-    fourMan: { low: 100, high: 130 }
-  });
+  const [rates, setRates] = useState({});
 
   useEffect(() => {
     const authStatus = localStorage.getItem('adminAuth');
@@ -44,13 +40,13 @@ export default function Admin() {
     localStorage.removeItem('adminAuth');
   };
 
-  const handleRateChange = (team, type, value) => {
+  const handleRateChange = (team, value) => {
+    // Convert to number, but allow empty string for display
+    const numericValue = value === '' ? '' : parseInt(value) || 0;
+    
     setRates(prev => ({
       ...prev,
-      [team]: {
-        ...prev[team],
-        [type]: parseInt(value)
-      }
+      [team]: numericValue
     }));
   };
 
@@ -59,17 +55,43 @@ export default function Admin() {
       const result = await mongoService.getRates();
       if (result.success && result.rates) {
         setRates(result.rates);
+        console.log('✅ Loaded rates for admin:', result.rates);
+      } else {
+        // Set default rates if loading failed
+        const defaultRates = {
+          twoMan: 70,
+          threeMan: 100,
+          fourMan: 130
+        };
+        setRates(defaultRates);
+        console.log('⚠️ Using default rates for admin:', defaultRates);
       }
     } catch (error) {
       console.error('Error loading team rates:', error);
+      // Set default rates if loading failed
+      const defaultRates = {
+        twoMan: 70,
+        threeMan: 100,
+        fourMan: 130
+      };
+      setRates(defaultRates);
     }
   };
 
   const saveRates = async () => {
     try {
-      const result = await mongoService.updateRates(rates);
+      // Convert any empty strings to 0 before saving
+      const normalizedRates = {
+        twoMan: parseInt(rates.twoMan) || 0,
+        threeMan: parseInt(rates.threeMan) || 0,
+        fourMan: parseInt(rates.fourMan) || 0
+      };
+      
+      const result = await mongoService.updateRates(normalizedRates);
       if (result.success) {
         alert('Rates saved successfully to MongoDB!');
+        // Update local state with normalized values
+        setRates(normalizedRates);
       } else {
         alert('Error saving rates: ' + result.error);
       }
@@ -129,19 +151,11 @@ export default function Admin() {
               <h3>2-Man Team</h3>
               <div className="rate-inputs">
                 <div className="input-group">
-                  <label>Low Rate ($)</label>
+                  <label>Rate ($/hour)</label>
                   <input
                     type="number"
-                    value={rates.twoMan?.low || ''}
-                    onChange={(e) => handleRateChange('twoMan', 'low', e.target.value)}
-                  />
-                </div>
-                <div className="input-group">
-                  <label>High Rate ($)</label>
-                  <input
-                    type="number"
-                    value={rates.twoMan?.high || ''}
-                    onChange={(e) => handleRateChange('twoMan', 'high', e.target.value)}
+                    value={rates.twoMan !== undefined ? rates.twoMan : ''}
+                    onChange={(e) => handleRateChange('twoMan', e.target.value)}
                   />
                 </div>
               </div>
@@ -151,19 +165,11 @@ export default function Admin() {
               <h3>3-Man Team</h3>
               <div className="rate-inputs">
                 <div className="input-group">
-                  <label>Low Rate ($)</label>
+                  <label>Rate ($/hour)</label>
                   <input
                     type="number"
-                    value={rates.threeMan?.low || ''}
-                    onChange={(e) => handleRateChange('threeMan', 'low', e.target.value)}
-                  />
-                </div>
-                <div className="input-group">
-                  <label>High Rate ($)</label>
-                  <input
-                    type="number"
-                    value={rates.threeMan?.high || ''}
-                    onChange={(e) => handleRateChange('threeMan', 'high', e.target.value)}
+                    value={rates.threeMan !== undefined ? rates.threeMan : ''}
+                    onChange={(e) => handleRateChange('threeMan', e.target.value)}
                   />
                 </div>
               </div>
@@ -173,19 +179,11 @@ export default function Admin() {
               <h3>4-Man Team</h3>
               <div className="rate-inputs">
                 <div className="input-group">
-                  <label>Low Rate ($)</label>
+                  <label>Rate ($/hour)</label>
                   <input
                     type="number"
-                    value={rates.fourMan?.low || ''}
-                    onChange={(e) => handleRateChange('fourMan', 'low', e.target.value)}
-                  />
-                </div>
-                <div className="input-group">
-                  <label>High Rate ($)</label>
-                  <input
-                    type="number"
-                    value={rates.fourMan?.high || ''}
-                    onChange={(e) => handleRateChange('fourMan', 'high', e.target.value)}
+                    value={rates.fourMan !== undefined ? rates.fourMan : ''}
+                    onChange={(e) => handleRateChange('fourMan', e.target.value)}
                   />
                 </div>
               </div>

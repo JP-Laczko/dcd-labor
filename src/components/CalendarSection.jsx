@@ -78,6 +78,16 @@ export default function CalendarSection() {
         // Available if actual bookings < allowed bookings AND allowedBookings > 0
         const isAvailable = (allowedBookings > 0 && actualBookings < allowedBookings) ? 1 : 0;
         
+        // Debug logging for specific dates
+        if (dateString.includes('2025-07-25') || dateString.includes('2025-07-29')) {
+          console.log(`📅 DEBUG ${dateString}:`, {
+            allowedBookings,
+            actualBookings,
+            isAvailable,
+            calculation: `${actualBookings} < ${allowedBookings} = ${actualBookings < allowedBookings}`
+          });
+        }
+        
         // Use consistent date format (ISO string)
         availability.set(dateString, isAvailable);
       }

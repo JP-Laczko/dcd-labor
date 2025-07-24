@@ -93,9 +93,9 @@ export default function AdminCalendar() {
         
         const allowedBookings = allowedBookingsPerDay.get(dateString) || 0;
         const actualBookings = actualBookingsPerDay.get(dateString) || 0;
-        const remainingSlots = Math.max(0, allowedBookings - actualBookings);
         
-        availability.set(dateString, remainingSlots);
+        // Admin page should show total allowed bookings (crew count), not remaining slots
+        availability.set(dateString, allowedBookings);
       }
       
       console.log('📅 Final availability for next 14 days:', Object.fromEntries(availability));
@@ -296,6 +296,15 @@ export default function AdminCalendar() {
             const dateString = date.toISOString().split('T')[0];
             const availableSlots = dailyAvailability.get(dateString) || 0;
             const dayBookings = dailyBookings.get(dateString) || [];
+            
+            // Debug logging for specific dates
+            if (dateString.includes('2025-07-25') || dateString.includes('2025-07-29')) {
+              console.log(`📅 ADMIN DEBUG ${dateString}:`, {
+                availableSlots,
+                bookingsCount: dayBookings.length,
+                rawAvailability: dailyAvailability.get(dateString)
+              });
+            }
 
             return (
               <div key={index} className="calendar-day active" onClick={() => handleDateClick(date)}>

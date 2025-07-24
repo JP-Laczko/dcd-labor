@@ -2,16 +2,34 @@
 // In production, this would be replaced with actual API calls
 
 const DEFAULT_RATES = {
-  twoMan: { low: 50, high: 70 },
-  threeMan: { low: 75, high: 100 },
-  fourMan: { low: 100, high: 130 }
+  twoMan: 70,
+  threeMan: 100,
+  fourMan: 130
 };
 
 export const rateService = {
   // Get current rates
   getRates: () => {
     const savedRates = localStorage.getItem('teamRates');
-    return savedRates ? JSON.parse(savedRates) : DEFAULT_RATES;
+    if (savedRates) {
+      const parsed = JSON.parse(savedRates);
+      
+      // Check if we have old format and migrate it
+      if (parsed.twoMan && typeof parsed.twoMan === 'object' && parsed.twoMan.high) {
+        console.log('Migrating old rate format to new single-rate format');
+        const migratedRates = {
+          twoMan: parsed.twoMan.high || 70,
+          threeMan: parsed.threeMan.high || 100,
+          fourMan: parsed.fourMan.high || 130
+        };
+        // Save the migrated format
+        localStorage.setItem('teamRates', JSON.stringify(migratedRates));
+        return migratedRates;
+      }
+      
+      return parsed;
+    }
+    return DEFAULT_RATES;
   },
 
   // Save rates
@@ -22,11 +40,11 @@ export const rateService = {
 
   // Get formatted rate string for display
   getFormattedRate: (teamSize) => {
-    const rates = this.getRates();
+    const rates = rateService.getRates();
     const rateKey = `${teamSize}Man`;
     
     if (rates[rateKey]) {
-      return `$${rates[rateKey].low} - $${rates[rateKey].high}/hour`;
+      return `$${rates[rateKey]}/hour`;
     }
     return 'Contact for pricing';
   }

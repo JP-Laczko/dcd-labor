@@ -1081,3 +1081,112 @@
   margin: 0;
   line-height: 1.4;
 }
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .admin-container {
+    padding: 15px;
+  }
+  
+  .admin-header {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+  
+  .admin-header h1 {
+    font-size: 2rem;
+  }
+  
+  .rates-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .rate-card h3 {
+    font-size: 1.3rem;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 0 10px;
+  }
+  
+  .modal-header h3 {
+    font-size: 1.2rem;
+  }
+  
+  .crew-counter {
+    justify-content: center;
+  }
+  
+  .counter-btn {
+    width: 45px;
+    height: 45px;
+    font-size: 22px;
+  }
+  
+  .crew-input {
+    width: 90px;
+    height: 45px;
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-header h1 {
+    font-size: 1.7rem;
+  }
+  
+  .rate-card {
+    padding: 15px;
+  }
+  
+  .rate-card h3 {
+    font-size: 1.2rem;
+  }
+  
+  .modal-content {
+    width: 98%;
+    margin: 0 5px;
+  }
+}
+
+/* Crew view specific styles */
+.crew-view .booking-item {
+  cursor: pointer;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+  margin: 4px 0;
+  background-color: #f9fafb;
+  transition: all 0.2s;
+}
+
+.crew-view .booking-item:hover {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.crew-view .booking-item.expanded {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.crew-view .expanded-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #d1d5db;
+  font-size: 12px;
+}
+
+.crew-view .expanded-details .detail-item {
+  margin: 4px 0;
+  color: #374151;
+}
+
+.crew-view .customer-name {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
+}

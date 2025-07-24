@@ -19,6 +19,7 @@ export default function BookingModal({
     crewSize: '2',
     yardAcreage: '',
     services: [],
+    preferredHour: '',
     notes: ''
   });
 
@@ -26,6 +27,12 @@ export default function BookingModal({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [chargeData, setChargeData] = useState({
+    materialsCost: '',
+    serviceHours: '',
+    crewRate: 0
+  });
   const [mode, setMode] = useState('add'); // 'add', 'view', 'edit'
 
   const services = [
@@ -42,8 +49,40 @@ export default function BookingModal({
   useEffect(() => {
     if (isOpen) {
       // Load rates
-      const currentRates = rateService.getRates();
-      setRates(currentRates);
+      const loadRates = async () => {
+        try {
+          const ratesResult = await mongoService.getRates();
+          let currentRates;
+          if (ratesResult.success) {
+            currentRates = ratesResult.rates;
+          } else {
+            // Fallback to rateService
+            currentRates = rateService.getRates();
+          }
+          
+          setRates(currentRates);
+
+          // Set crew rate for charge calculation if booking exists
+          if (booking && booking.service?.crewSize) {
+            // Use stored hourly rate from booking, or fallback to current rates
+            const storedRate = booking.service?.hourlyRate;
+            const crewSizeKey = `${booking.service.crewSize}Man`;
+            const fallbackRate = currentRates[crewSizeKey] || 0;
+            
+            setChargeData(prev => ({
+              ...prev,
+              crewRate: storedRate || fallbackRate
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading rates:', error);
+          // Fallback to rateService
+          const currentRates = rateService.getRates();
+          setRates(currentRates);
+        }
+      };
+      
+      loadRates();
 
       // Determine initial mode
       if (booking) {
@@ -56,6 +95,7 @@ export default function BookingModal({
           crewSize: booking.service?.crewSize?.toString() || '2',
           yardAcreage: booking.service?.yardAcreage || '',
           services: booking.service?.services || [],
+          preferredHour: booking.service?.preferredHour || '',
           notes: booking.service?.notes || ''
         });
       } else {
@@ -68,6 +108,7 @@ export default function BookingModal({
           crewSize: '2',
           yardAcreage: '',
           services: [],
+          preferredHour: '',
           notes: ''
         });
       }
@@ -183,6 +224,94 @@ export default function BookingModal({
     }
   };
 
+  const handleChargeClick = () => {
+    if (!booking) return;
+    
+    // Set up charge data with stored crew rate or fallback to current rate
+    const storedRate = booking.service?.hourlyRate;
+    const crewSizeKey = `${booking.service?.crewSize || 2}Man`;
+    const fallbackRate = rates[crewSizeKey] || 0;
+    
+    setChargeData({
+      materialsCost: '',
+      serviceHours: '',
+      crewRate: storedRate || fallbackRate
+    });
+    setShowChargeModal(true);
+  };
+
+  const handleChargeInputChange = (e) => {
+    const { name, value } = e.target;
+    setChargeData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const calculateTotal = () => {
+    const materials = parseFloat(chargeData.materialsCost) || 0;
+    const hours = parseFloat(chargeData.serviceHours) || 0;
+    const rate = chargeData.crewRate || 0;
+    const laborCost = hours * rate;
+    const subtotal = materials + laborCost;
+    const deposit = 80; // Fixed deposit amount
+    const finalAmount = Math.max(0, subtotal - deposit);
+    
+    return {
+      materials,
+      laborCost,
+      subtotal,
+      deposit,
+      finalAmount
+    };
+  };
+
+  const handleCharge = async () => {
+    if (!booking) return;
+
+    // Validate inputs
+    if (!chargeData.materialsCost || !chargeData.serviceHours) {
+      alert('Please fill in both materials cost and service hours');
+      return;
+    }
+
+    const totals = calculateTotal();
+    
+    setIsSubmitting(true);
+    try {
+      // Here you would integrate with your payment processing
+      // For now, we'll just simulate the charge
+      const confirmed = window.confirm(
+        `Charge $${totals.finalAmount.toFixed(2)} to customer's card?
+        
+Breakdown:
+Materials: $${totals.materials.toFixed(2)}
+Labor (${chargeData.serviceHours} hours × $${chargeData.crewRate}/hr): $${totals.laborCost.toFixed(2)}
+Subtotal: $${totals.subtotal.toFixed(2)}
+Less Deposit: -$${totals.deposit.toFixed(2)}
+Final Charge: $${totals.finalAmount.toFixed(2)}`
+      );
+
+      if (confirmed) {
+        // Process payment and delete booking
+        const result = await mongoService.deleteBooking(booking.bookingId);
+        if (result.success) {
+          alert('Payment processed successfully! Booking has been completed and removed.');
+          onBookingChange(); // Refresh calendar
+          onClose();
+        } else {
+          alert('Error processing charge: ' + result.error);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing charge:', error);
+      alert('Error processing charge: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+      setShowChargeModal(false);
+    }
+  };
+
   const renderViewMode = () => (
     <div className="modal-body">
       <p className="selected-date">
@@ -225,6 +354,10 @@ export default function BookingModal({
               <span>{formData.crewSize}-Person Crew</span>
             </div>
             <div className="detail-item">
+              <label>Hourly Rate:</label>
+              <span>${booking?.service?.hourlyRate || rates[`${formData.crewSize}Man`] || 'N/A'}/hour</span>
+            </div>
+            <div className="detail-item">
               <label>Yard Acreage:</label>
               <span>{formData.yardAcreage || 'Not specified'}</span>
             </div>
@@ -232,6 +365,12 @@ export default function BookingModal({
               <label>Services:</label>
               <span>{formData.services.join(', ')}</span>
             </div>
+            {formData.preferredHour && (
+              <div className="detail-item">
+                <label>Preferred Hour:</label>
+                <span>{formData.preferredHour.charAt(0).toUpperCase() + formData.preferredHour.slice(1).replace('-', ' ')}</span>
+              </div>
+            )}
             {formData.notes && (
               <div className="detail-item full-width">
                 <label>Notes:</label>
@@ -268,6 +407,13 @@ export default function BookingModal({
           className="edit-button"
         >
           Edit Booking
+        </button>
+        <button 
+          type="button" 
+          onClick={handleChargeClick}
+          className="charge-button"
+        >
+          Charge & Complete
         </button>
         <button 
           type="button" 
@@ -391,6 +537,25 @@ export default function BookingModal({
             </div>
 
             <div className="form-group">
+              <label htmlFor="preferredHour">Preferred Hour of Day</label>
+              <select
+                id="preferredHour"
+                name="preferredHour"
+                value={formData.preferredHour}
+                onChange={handleInputChange}
+              >
+                <option value="">No preference</option>
+                <option value="morning">Morning (8AM - 12PM)</option>
+                <option value="afternoon">Afternoon (12PM - 5PM)</option>
+                <option value="early-morning">Early Morning (7AM - 9AM)</option>
+                <option value="late-afternoon">Late Afternoon (3PM - 6PM)</option>
+              </select>
+              <small style={{color: '#666', fontSize: '12px', marginTop: '4px', display: 'block'}}>
+                Note: We will communicate to confirm the exact hour
+              </small>
+            </div>
+
+            <div className="form-group">
               <label>Services Needed *</label>
               <div className="services-grid">
                 {services.map(service => (
@@ -482,6 +647,99 @@ export default function BookingModal({
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Deleting...' : 'Remove Booking'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Charge Modal */}
+      {showChargeModal && (
+        <div className="modal-overlay">
+          <div className="modal-content charge-modal">
+            <div className="modal-header">
+              <h3>Charge & Complete Booking</h3>
+              <button className="close-button" onClick={() => setShowChargeModal(false)}>&times;</button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="charge-form">
+                <div className="form-group">
+                  <label htmlFor="materialsCost">Materials Cost ($)</label>
+                  <input
+                    type="number"
+                    id="materialsCost"
+                    name="materialsCost"
+                    value={chargeData.materialsCost}
+                    onChange={handleChargeInputChange}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="serviceHours">Service Hours</label>
+                  <input
+                    type="number"
+                    id="serviceHours"
+                    name="serviceHours"
+                    value={chargeData.serviceHours}
+                    onChange={handleChargeInputChange}
+                    placeholder="0.0"
+                    min="0"
+                    step="0.5"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Crew Rate</label>
+                  <div className="crew-rate-display">
+                    ${chargeData.crewRate}/hour ({booking?.service?.crewSize || 2}-man crew)
+                  </div>
+                </div>
+
+                {chargeData.materialsCost && chargeData.serviceHours && (
+                  <div className="calculation-breakdown">
+                    <h4>Cost Breakdown</h4>
+                    <div className="breakdown-item">
+                      <span>Materials:</span>
+                      <span>${calculateTotal().materials.toFixed(2)}</span>
+                    </div>
+                    <div className="breakdown-item">
+                      <span>Labor ({chargeData.serviceHours} hrs × ${chargeData.crewRate}/hr):</span>
+                      <span>${calculateTotal().laborCost.toFixed(2)}</span>
+                    </div>
+                    <div className="breakdown-item subtotal">
+                      <span>Subtotal:</span>
+                      <span>${calculateTotal().subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="breakdown-item">
+                      <span>Less Deposit:</span>
+                      <span>-${calculateTotal().deposit.toFixed(2)}</span>
+                    </div>
+                    <div className="breakdown-item total">
+                      <span><strong>Final Charge:</strong></span>
+                      <span><strong>${calculateTotal().finalAmount.toFixed(2)}</strong></span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                className="btn-secondary" 
+                onClick={() => setShowChargeModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-primary charge-confirm-btn" 
+                onClick={handleCharge}
+                disabled={isSubmitting || !chargeData.materialsCost || !chargeData.serviceHours}
+              >
+                {isSubmitting ? 'Processing...' : 'Charge & Complete'}
               </button>
             </div>
           </div>

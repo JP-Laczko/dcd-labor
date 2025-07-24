@@ -59,14 +59,175 @@ class MongoService {
     }
   }
 
+  // RATE MANAGEMENT
+  async getRates() {
+    try {
+      if (this.isConnected) {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/team-rates`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const rates = await response.json();
+          console.log('✅ Loaded rates from MongoDB:', rates);
+          return { success: true, rates };
+        } else {
+          throw new Error(`Failed to fetch rates: ${response.status}`);
+        }
+      } else {
+        // Fallback to localStorage
+        const savedRates = localStorage.getItem('teamRates');
+        if (savedRates) {
+          const rates = JSON.parse(savedRates);
+          // Check for old format and migrate
+          if (rates.twoMan && typeof rates.twoMan === 'object' && rates.twoMan.high) {
+            const migratedRates = {
+              twoMan: rates.twoMan.high || 70,
+              threeMan: rates.threeMan.high || 100,
+              fourMan: rates.fourMan.high || 130
+            };
+            localStorage.setItem('teamRates', JSON.stringify(migratedRates));
+            return { success: true, rates: migratedRates };
+          }
+          return { success: true, rates };
+        } else {
+          const defaultRates = { twoMan: 70, threeMan: 100, fourMan: 130 };
+          // Save default rates to localStorage for future use
+          localStorage.setItem('teamRates', JSON.stringify(defaultRates));
+          console.log('💾 Saved default rates to localStorage:', defaultRates);
+          return { success: true, rates: defaultRates };
+        }
+      }
+    } catch (error) {
+      console.error('Error getting rates:', error);
+      // Fallback to localStorage
+      const savedRates = localStorage.getItem('teamRates');
+      if (savedRates) {
+        const rates = JSON.parse(savedRates);
+        return { success: true, rates };
+      }
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateRates(rates) {
+    try {
+      if (this.isConnected) {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/team-rates`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(rates)
+        });
+        
+        if (response.ok) {
+          console.log('✅ Updated rates in MongoDB');
+          // Also save to localStorage as backup
+          localStorage.setItem('teamRates', JSON.stringify(rates));
+          return { success: true };
+        } else {
+          throw new Error(`Failed to update rates: ${response.status}`);
+        }
+      } else {
+        // Fallback to localStorage
+        localStorage.setItem('teamRates', JSON.stringify(rates));
+        console.log('💾 Saved rates to localStorage (fallback)');
+        return { success: true };
+      }
+    } catch (error) {
+      console.error('Error updating rates:', error);
+      // Fallback to localStorage
+      localStorage.setItem('teamRates', JSON.stringify(rates));
+      return { success: false, error: error.message };
+    }
+  }
+
   // Generate unique ID
   generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
+  // Check if a specific date is available for booking
+  async checkDateAvailability(dateString) {
+    try {
+      // Get calendar availability for the date
+      const calendarResult = await this.getAllCalendarAvailability();
+      let allowedBookings = 0;
+      
+      if (calendarResult.success && calendarResult.availability) {
+        const dateEntry = calendarResult.availability.find(entry => entry.date === dateString);
+        allowedBookings = dateEntry?.bookings || 0;
+      }
+      
+      // Get existing bookings for the date
+      const bookingsResult = await this.getBookings();
+      let existingBookings = 0;
+      
+      if (bookingsResult.success && bookingsResult.bookings) {
+        existingBookings = bookingsResult.bookings.filter(booking => {
+          const bookingDate = new Date(booking.service?.date || booking.date);
+          const bookingDateString = bookingDate.toISOString().split('T')[0];
+          return bookingDateString === dateString;
+        }).length;
+      }
+      
+      const isAvailable = allowedBookings > 0 && existingBookings < allowedBookings;
+      
+      return {
+        isAvailable,
+        allowedBookings,
+        existingBookings,
+        remainingSlots: Math.max(0, allowedBookings - existingBookings)
+      };
+    } catch (error) {
+      console.error('Error checking date availability:', error);
+      return {
+        isAvailable: false,
+        error: error.message
+      };
+    }
+  }
+
   // BOOKING OPERATIONS
   async createBooking(bookingData) {
     try {
+      // First, check if the date is available
+      const dateString = new Date(bookingData.date).toISOString().split('T')[0];
+      const availabilityCheck = await this.checkDateAvailability(dateString);
+      
+      if (!availabilityCheck.isAvailable) {
+        return {
+          success: false,
+          error: 'The selected date is not available for booking. Please choose another date.',
+          reason: 'date_unavailable'
+        };
+      }
+
+      // Get current rates to store with booking
+      const ratesResult = await this.getRates();
+      console.log('📊 Rate fetch result:', ratesResult);
+      const currentRates = ratesResult.success ? ratesResult.rates : { twoMan: 70, threeMan: 100, fourMan: 130 };
+      // Convert crew size number to proper key format
+      const crewSizeMap = {
+        '2': 'twoMan',
+        '3': 'threeMan', 
+        '4': 'fourMan'
+      };
+      const crewSizeKey = crewSizeMap[bookingData.crewSize.toString()];
+      const currentRate = currentRates[crewSizeKey] || 0;
+      
+      console.log('📊 Booking rate calculation:', {
+        crewSize: bookingData.crewSize,
+        crewSizeKey,
+        currentRates,
+        currentRate,
+        fallbackUsed: !ratesResult.success
+      });
+
       const booking = {
         bookingId: this.generateId(),
         customer: {
@@ -78,8 +239,10 @@ class MongoService {
         service: {
           date: new Date(bookingData.date),
           crewSize: parseInt(bookingData.crewSize),
+          hourlyRate: currentRate,
           yardAcreage: bookingData.yardAcreage,
           services: bookingData.services,
+          preferredHour: bookingData.preferredHour || '',
           notes: bookingData.notes || '',
           estimatedHours: null,
           totalCost: null
@@ -118,7 +281,12 @@ class MongoService {
 
       if (this.isConnected) {
         // Real MongoDB operation - POST to backend API
-        console.log('Saving booking to MongoDB:', booking);
+        console.log('✅ Saving booking to MongoDB with rate:', {
+          bookingId: booking.bookingId,
+          crewSize: booking.service.crewSize,
+          hourlyRate: booking.service.hourlyRate
+        });
+        console.log('📋 Full booking object:', booking);
         
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/bookings`, {
           method: 'POST',

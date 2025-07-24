@@ -17,6 +17,7 @@ export default function Schedule() {
     date: "",
     crewSize: "",
     yardAcreage: "",
+    preferredHour: "",
     notes: ""
   });
 
@@ -24,23 +25,44 @@ export default function Schedule() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Initialize MongoDB connection
-    mongoService.connect();
-    
-    // Check if date is passed via URL params
-    const urlParams = new URLSearchParams(location.search);
-    const dateParam = urlParams.get('date');
-    
-    if (dateParam) {
-      setFormData(prev => ({
-        ...prev,
-        date: dateParam
-      }));
-    }
+    // Initialize MongoDB connection and load rates
+    const initializeSchedule = async () => {
+      await mongoService.connect();
+      
+      // Check if date is passed via URL params
+      const urlParams = new URLSearchParams(location.search);
+      const dateParam = urlParams.get('date');
+      
+      if (dateParam) {
+        setFormData(prev => ({
+          ...prev,
+          date: dateParam
+        }));
+      }
 
-    // Load current rates
-    const currentRates = rateService.getRates();
-    setRates(currentRates);
+      // Load current rates from MongoDB
+      try {
+        const ratesResult = await mongoService.getRates();
+        console.log('📊 Schedule page rates result:', ratesResult);
+        if (ratesResult.success) {
+          console.log('📊 Setting rates in Schedule page:', ratesResult.rates);
+          setRates(ratesResult.rates);
+        } else {
+          // Fallback to rateService
+          const currentRates = rateService.getRates();
+          console.log('📊 Using rateService fallback:', currentRates);
+          setRates(currentRates);
+        }
+      } catch (error) {
+        console.error('Error loading rates:', error);
+        // Fallback to rateService
+        const currentRates = rateService.getRates();
+        console.log('📊 Using rateService fallback (error):', currentRates);
+        setRates(currentRates);
+      }
+    };
+    
+    initializeSchedule();
   }, [location]);
 
   const [errors, setErrors] = useState({});
@@ -56,21 +78,23 @@ export default function Schedule() {
     "Pressure Washing"
   ];
 
+  console.log('📊 Current rates state in Schedule:', rates);
+  
   const crewSizes = [
     { 
       value: "2", 
       label: "2-Man Crew", 
-      rate: rates.twoMan ? `$${rates.twoMan.low} - $${rates.twoMan.high}/hour` : "$50 - $70/hour"
+      rate: rates.twoMan ? `$${rates.twoMan}/hour` : "$70/hour"
     },
     { 
       value: "3", 
       label: "3-Man Crew", 
-      rate: rates.threeMan ? `$${rates.threeMan.low} - $${rates.threeMan.high}/hour` : "$75 - $100/hour"
+      rate: rates.threeMan ? `$${rates.threeMan}/hour` : "$100/hour"
     },
     { 
       value: "4", 
       label: "4-Man Crew", 
-      rate: rates.fourMan ? `$${rates.fourMan.low} - $${rates.fourMan.high}/hour` : "$100 - $130/hour"
+      rate: rates.fourMan ? `$${rates.fourMan}/hour` : "$130/hour"
     }
   ];
 
@@ -143,6 +167,16 @@ export default function Schedule() {
     setIsSubmitting(true);
 
     try {
+      // Check date availability before creating booking
+      const dateString = new Date(formData.date).toISOString().split('T')[0];
+      const availabilityCheck = await mongoService.checkDateAvailability(dateString);
+      
+      if (!availabilityCheck.isAvailable) {
+        alert(`Sorry, ${new Date(formData.date).toLocaleDateString()} is not available for booking. Please choose another date.`);
+        setIsSubmitting(false);
+        return;
+      }
+
       // Save booking to MongoDB
       const bookingResult = await mongoService.createBooking(formData);
       
@@ -178,6 +212,7 @@ export default function Schedule() {
         date: "",
         crewSize: "",
         yardAcreage: "",
+        preferredHour: "",
         notes: ""
       });
       
@@ -294,6 +329,27 @@ export default function Schedule() {
                 {errors.date && <span className="error-text">{errors.date}</span>}
               </div>
 
+              <div className="form-group">
+                <label htmlFor="preferredHour">Preferred Hour of Day</label>
+                <select
+                  id="preferredHour"
+                  name="preferredHour"
+                  value={formData.preferredHour}
+                  onChange={handleInputChange}
+                >
+                  <option value="">No preference</option>
+                  <option value="morning">Morning (8AM - 12PM)</option>
+                  <option value="afternoon">Afternoon (12PM - 5PM)</option>
+                  <option value="early-morning">Early Morning (7AM - 9AM)</option>
+                  <option value="late-afternoon">Late Afternoon (3PM - 6PM)</option>
+                </select>
+                <small style={{color: '#666', fontSize: '12px', marginTop: '4px', display: 'block'}}>
+                  Note: We will communicate to confirm the exact hour
+                </small>
+              </div>
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
                 <label htmlFor="yardAcreage">Approximate Yard Acreage *</label>
                 <input

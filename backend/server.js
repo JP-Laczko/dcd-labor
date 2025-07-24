@@ -286,6 +286,7 @@ app.put('/api/bookings/:id', async (req, res) => {
         crewSize: parseInt(bookingData.crewSize),
         yardAcreage: bookingData.yardAcreage,
         services: bookingData.services,
+        preferredHour: bookingData.preferredHour || '',
         notes: bookingData.notes || ''
       },
       updatedAt: new Date()
@@ -355,9 +356,9 @@ app.get('/api/team-rates', async (req, res) => {
     } else {
       // Return default rates if none found
       const defaultRates = {
-        twoMan: { low: 50, high: 70 },
-        threeMan: { low: 75, high: 100 },
-        fourMan: { low: 100, high: 130 }
+        twoMan: 70,
+        threeMan: 100,
+        fourMan: 130
       };
       res.json(defaultRates);
     }
@@ -451,6 +452,7 @@ app.get('/api/email-preview', async (req, res) => {
       },
       yardAcreage: '0.5 acres',
       services: ['Lawn Mowing', 'Leaf Removal', 'Hedge Trimming'],
+      preferredHour: 'morning',
       notes: 'Please be careful around the flower beds near the front entrance.'
     };
 
@@ -559,6 +561,13 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
             </div>
             ` : ''}
             
+            ${(bookingData.preferredHour || bookingData.service?.preferredHour) ? `
+            <div class="detail-row">
+              <span class="detail-label">Preferred Hour: </span>
+              <span>${(bookingData.preferredHour || bookingData.service?.preferredHour).charAt(0).toUpperCase() + (bookingData.preferredHour || bookingData.service?.preferredHour).slice(1).replace('-', ' ')} (subject to confirmation)</span>
+            </div>
+            ` : ''}
+
             <div class="detail-row">
               <span class="detail-label">Rate: </span>
               <span>${rateRange}</span>
@@ -692,6 +701,13 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
             </div>
             ` : ''}
             
+            ${(bookingData.preferredHour || bookingData.service?.preferredHour) ? `
+            <div class="detail-row">
+              <span class="detail-label">Preferred Hour: </span>
+              <span>${(bookingData.preferredHour || bookingData.service?.preferredHour).charAt(0).toUpperCase() + (bookingData.preferredHour || bookingData.service?.preferredHour).slice(1).replace('-', ' ')} (subject to confirmation)</span>
+            </div>
+            ` : ''}
+
             <div class="detail-row">
               <span class="detail-label">Rate: </span>
               <span>${rateRange}</span>
@@ -739,23 +755,23 @@ async function getRateRange(crewSize) {
     
     if (ratesDoc) {
       const crewSizeKey = `${crewSize}Man`;
-      const rateInfo = ratesDoc[crewSizeKey];
+      const rate = ratesDoc[crewSizeKey];
       
-      if (rateInfo) {
-        return `$${rateInfo.low} - $${rateInfo.high}/hour`;
+      if (rate) {
+        return `$${rate}/hour`;
       }
     }
     
     // Fallback to default rates if not found in database
     const defaultRates = {
-      '2': { low: 50, high: 70 },
-      '3': { low: 75, high: 100 },
-      '4': { low: 100, high: 130 }
+      '2': 70,
+      '3': 100,
+      '4': 130
     };
     
-    const rateInfo = defaultRates[crewSize?.toString()];
-    if (rateInfo) {
-      return `$${rateInfo.low} - $${rateInfo.high}/hour`;
+    const rate = defaultRates[crewSize?.toString()];
+    if (rate) {
+      return `$${rate}/hour`;
     }
     
     return 'Contact for pricing';
@@ -855,6 +871,13 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
             </div>
             ` : ''}
             
+            ${(bookingData.preferredHour || bookingData.service?.preferredHour) ? `
+            <div class="detail-row">
+              <span class="detail-label">Preferred Hour: </span>
+              <span>${(bookingData.preferredHour || bookingData.service?.preferredHour).charAt(0).toUpperCase() + (bookingData.preferredHour || bookingData.service?.preferredHour).slice(1).replace('-', ' ')} (subject to confirmation)</span>
+            </div>
+            ` : ''}
+
             <div class="detail-row">
               <span class="detail-label">Rate: </span>
               <span>${rateRange}</span>
@@ -999,6 +1022,13 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
             </div>
             ` : ''}
             
+            ${(bookingData.preferredHour || bookingData.service?.preferredHour) ? `
+            <div class="detail-row">
+              <span class="detail-label">Preferred Hour: </span>
+              <span>${(bookingData.preferredHour || bookingData.service?.preferredHour).charAt(0).toUpperCase() + (bookingData.preferredHour || bookingData.service?.preferredHour).slice(1).replace('-', ' ')} (subject to confirmation)</span>
+            </div>
+            ` : ''}
+
             <div class="detail-row">
               <span class="detail-label">Rate: </span>
               <span>${rateRange}</span>

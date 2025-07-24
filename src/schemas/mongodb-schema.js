@@ -18,8 +18,10 @@ export const bookingSchema = {
   service: {
     date: "Date", // Required, preferred service date
     crewSize: "Number", // Required, 2, 3, or 4 man crew
+    hourlyRate: "Number", // Required, rate at time of booking
     yardAcreage: "String", // Required, yard size description
     services: ["String"], // Required, array of requested services
+    preferredHour: "String", // Optional, preferred time of day
     notes: "String", // Optional, additional customer notes
     estimatedHours: "Number", // Optional, estimated job duration
     totalCost: "Number" // Optional, calculated total cost
@@ -110,18 +112,9 @@ export const teamRatesSchema = {
   
   // Rate Configuration
   rates: {
-    twoMan: {
-      low: "Number", // Minimum hourly rate
-      high: "Number" // Maximum hourly rate
-    },
-    threeMan: {
-      low: "Number",
-      high: "Number"
-    },
-    fourMan: {
-      low: "Number",
-      high: "Number"
-    }
+    twoMan: "Number", // Hourly rate
+    threeMan: "Number", // Hourly rate
+    fourMan: "Number" // Hourly rate
   },
   
   // Version Control
@@ -215,8 +208,10 @@ export const sampleData = {
     service: {
       date: new Date("2024-03-15"),
       crewSize: 2,
+      hourlyRate: 70,
       yardAcreage: "0.5 acres",
       services: ["Leaf Removal", "Lawn Mowing", "Hedge Trimming"],
+      preferredHour: "morning",
       notes: "Please avoid the flower beds near the front porch",
       estimatedHours: 4,
       totalCost: 280
@@ -281,9 +276,9 @@ export const sampleData = {
   // Sample team rates
   sampleRates: {
     rates: {
-      twoMan: { low: 50, high: 70 },
-      threeMan: { low: 75, high: 100 },
-      fourMan: { low: 100, high: 130 }
+      twoMan: 70,
+      threeMan: 100,
+      fourMan: 130
     },
     version: 1,
     effectiveDate: new Date(),

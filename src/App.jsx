@@ -4,6 +4,7 @@ import Schedule from "./pages/Schedule";
 import Contact from "./pages/Contact";
 import OurStory from "./pages/OurStory";
 import Admin from "./pages/Admin";
+import Crew from "./pages/Crew";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/crew" element={<Crew />} />
       </Routes>
     </Router>
   );

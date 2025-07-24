@@ -9,10 +9,20 @@ export default function HeroCarousel() {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
+    // Start first transition after 2 seconds
+    const firstTimeout = setTimeout(() => {
+      setCurrent((prev) => (prev + 1) % images.length);
+    }, 2000);
+
+    // Then continue with regular 5-second intervals
     const interval = setInterval(() => {
       setCurrent((prev) => (prev + 1) % images.length);
     }, 5000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearTimeout(firstTimeout);
+      clearInterval(interval);
+    };
   }, []);
 
   return (

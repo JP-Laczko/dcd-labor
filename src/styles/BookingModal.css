@@ -368,3 +368,159 @@
     width: 100%;
   }
 }
+
+/* Charge Modal Styles */
+.charge-modal {
+  max-width: 500px;
+}
+
+.charge-form .form-group {
+  margin-bottom: 20px;
+}
+
+.charge-form label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.charge-form input[type="number"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.charge-form input[type="number"]:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.crew-rate-display {
+  padding: 10px;
+  background-color: #f3f4f6;
+  border-radius: 6px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.calculation-breakdown {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.calculation-breakdown h4 {
+  margin: 0 0 15px 0;
+  color: #374151;
+  font-size: 16px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.breakdown-item:last-child {
+  border-bottom: none;
+}
+
+.breakdown-item.subtotal {
+  border-top: 1px solid #d1d5db;
+  margin-top: 8px;
+  padding-top: 12px;
+  font-weight: 500;
+}
+
+.breakdown-item.total {
+  border-top: 2px solid #374151;
+  margin-top: 8px;
+  padding-top: 12px;
+  font-size: 16px;
+}
+
+.charge-button {
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.charge-button:hover {
+  background-color: #16a34a;
+}
+
+.charge-confirm-btn {
+  background-color: #22c55e;
+  color: white;
+}
+
+.charge-confirm-btn:hover:not(:disabled) {
+  background-color: #16a34a;
+}
+
+.charge-confirm-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Mobile responsiveness for charge modal */
+@media (max-width: 768px) {
+  .charge-modal {
+    max-width: 95%;
+    margin: 0 10px;
+  }
+  
+  .charge-form input[type="number"],
+  .charge-form select {
+    font-size: 16px; /* Prevent iOS zoom on input focus */
+  }
+  
+  .calculation-breakdown {
+    font-size: 14px;
+  }
+  
+  .breakdown-item {
+    padding: 6px 0;
+    flex-direction: column;
+    text-align: left;
+  }
+  
+  .breakdown-item span:first-child {
+    margin-bottom: 2px;
+    font-weight: 500;
+  }
+  
+  .charge-modal .modal-footer {
+    padding: 20px 15px;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .charge-modal .modal-footer button {
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 16px;
+  }
+  
+  .charge-modal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-bottom: 20px;
+  }
+  
+  .charge-modal .calculation-breakdown {
+    margin-bottom: 20px;
+  }
+}
