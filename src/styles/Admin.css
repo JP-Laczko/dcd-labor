@@ -431,7 +431,7 @@
     flex: 1;
     overflow-y: auto;
     margin-bottom: 4px;
-    margin-top: 45px; /* Space for fixed day number and crew header */
+    margin-top: 55px; /* Increased space for fixed day number and crew header - fixes iPhone Safari issue */
     padding-top: 2px;
   }
   
@@ -532,6 +532,17 @@
   .input-group input {
     font-size: 14px;
     padding: 6px;
+  }
+
+  /* iPhone Safari specific fixes */
+  @supports (-webkit-touch-callout: none) {
+    .bookings-list {
+      margin-top: 60px !important; /* Extra space for iPhone Safari */
+    }
+    
+    .calendar-day .day-header {
+      top: 26px; /* Slightly lower positioning for iPhone Safari */
+    }
   }
 }
 
@@ -656,7 +667,7 @@
   flex: 1;
   overflow-y: auto;
   margin-bottom: 8px;
-  margin-top: 50px; /* Space for fixed day number and crew header */
+  margin-top: 55px; /* Increased space for fixed day number and crew header - fixes iPhone Safari issue */
   padding-top: 4px;
 }
 
