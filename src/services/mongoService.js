@@ -303,8 +303,7 @@ class MongoService {
         const result = await response.json();
         console.log('MongoDB save result:', result);
         
-        // Update calendar availability
-        await this.updateCalendarAvailability(booking.service.date, 1);
+        // NOTE: DO NOT update calendar availability here - that's only set by admin via Edit Crews
         
         return { success: true, booking: result };
       } else {
@@ -313,8 +312,7 @@ class MongoService {
         bookings.push(booking);
         localStorage.setItem('dcd_bookings', JSON.stringify(bookings));
         
-        // Update calendar availability
-        await this.updateCalendarAvailability(booking.service.date, 1);
+        // NOTE: DO NOT update calendar availability here - that's only set by admin via Edit Crews
         
         return { success: true, booking };
       }
@@ -547,16 +545,21 @@ class MongoService {
     try {
       const dateString = new Date(date).toISOString().split('T')[0];
       
+      // SECURITY: Only allow crew count updates - booking changes should never happen
+      if (crewCount === null) {
+        console.error('🚫 SECURITY: updateCalendarAvailability called without crewCount - this should never happen!');
+        console.error('🚫 Attempted bookingChange:', bookingChange, 'for date:', dateString);
+        return { success: false, error: 'Only crew count updates are allowed' };
+      }
+      
       if (this.isConnected) {
-        console.log('🗄️ Updating calendar availability in MongoDB:', dateString, { bookingChange, crewCount });
+        console.log('🗄️ Updating calendar availability in MongoDB:', dateString, { crewCount });
         try {
-          // Prepare request body based on parameters
-          const requestBody = { date: dateString };
-          if (crewCount !== null) {
-            requestBody.crewCount = crewCount;
-          } else {
-            requestBody.bookingChange = bookingChange;
-          }
+          // Only allow crewCount updates
+          const requestBody = { 
+            date: dateString,
+            crewCount: crewCount
+          };
           
           // Make API call to update MongoDB
           const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/calendar-availability`, {
@@ -577,7 +580,7 @@ class MongoService {
         } catch (apiError) {
           console.error('🗄️ API call failed, falling back to localStorage:', apiError);
           this.isConnected = false;
-          return this.updateCalendarAvailability(date, bookingChange, crewCount);
+          return this.updateCalendarAvailability(date, 0, crewCount); // Pass 0 for bookingChange in fallback
         }
       } else {
         // Fallback to localStorage using new array format
@@ -595,18 +598,12 @@ class MongoService {
         if (!existingEntry) {
           existingEntry = {
             date: dateString,
-            bookings: 1 // Default to 1 allowed booking
+            bookings: Math.max(0, crewCount)
           };
           calendar.push(existingEntry);
-        }
-        
-        // Update the bookings count
-        if (crewCount !== null) {
-          // Absolute crew count setting
-          existingEntry.bookings = Math.max(0, crewCount);
         } else {
-          // Relative booking change
-          existingEntry.bookings = Math.max(0, existingEntry.bookings + bookingChange);
+          // Only allow admin crew count setting
+          existingEntry.bookings = Math.max(0, crewCount);
         }
         
         console.log('🗄️ Updated calendar entry:', existingEntry);

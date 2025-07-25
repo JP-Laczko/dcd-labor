@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import "../styles/Admin.css";
 import mongoService from "../services/mongoService";
 import BookingModal from "./BookingModal";
+import SquareFinalPayment from "./SquareFinalPayment";
 
 export default function AdminCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -15,6 +16,9 @@ export default function AdminCalendar() {
   const [crewCount, setCrewCount] = useState(0);
   const [expandedBooking, setExpandedBooking] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [showFinalPaymentModal, setShowFinalPaymentModal] = useState(false);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState(null);
+  const [rates, setRates] = useState({});
 
   useEffect(() => {
     // Initialize MongoDB connection and fetch availability
@@ -25,15 +29,40 @@ export default function AdminCalendar() {
         console.log('📅 AdminCalendar: MongoDB connection result:', connectionResult);
         await fetchAvailability();
         await fetchBookings();
+        await loadRates();
       } catch (error) {
         console.error('📅 AdminCalendar: Initialization error:', error);
         await fetchAvailability(); // Try to fetch anyway (will use localStorage fallback)
         await fetchBookings();
+        await loadRates();
       }
     };
     
     initializeCalendar();
   }, [currentDate]);
+
+  const loadRates = async () => {
+    try {
+      const ratesResult = await mongoService.getRates();
+      if (ratesResult.success) {
+        setRates(ratesResult.rates);
+      } else {
+        // Fallback to default rates
+        setRates({
+          twoMan: 70,
+          threeMan: 100,
+          fourMan: 130
+        });
+      }
+    } catch (error) {
+      console.error('Error loading rates:', error);
+      setRates({
+        twoMan: 70,
+        threeMan: 100,
+        fourMan: 130
+      });
+    }
+  };
 
   useEffect(() => {
     // Handle window resize for mobile detection
@@ -51,8 +80,8 @@ export default function AdminCalendar() {
       const availability = new Map();
       const today = new Date();
       
-      // Initialize next 2 weeks as unavailable
-      for (let i = 1; i <= 14; i++) {
+      // Initialize today + next 2 weeks as unavailable
+      for (let i = 0; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
@@ -86,7 +115,7 @@ export default function AdminCalendar() {
       }
       
       // Step 4: Calculate final availability
-      for (let i = 1; i <= 14; i++) {
+      for (let i = 0; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
@@ -98,7 +127,7 @@ export default function AdminCalendar() {
         availability.set(dateString, allowedBookings);
       }
       
-      console.log('📅 Final availability for next 14 days:', Object.fromEntries(availability));
+      console.log('📅 Final availability for today + next 14 days:', Object.fromEntries(availability));
       setDailyAvailability(availability);
     } catch (error) {
       console.error('❌ Calendar: Error fetching calendar availability:', error);
@@ -107,7 +136,7 @@ export default function AdminCalendar() {
       const fallbackAvailability = new Map();
       const today = new Date();
       
-      for (let i = 1; i <= 14; i++) {
+      for (let i = 0; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
@@ -396,6 +425,11 @@ export default function AdminCalendar() {
         selectedDate={selectedDate}
         booking={selectedBooking}
         onBookingChange={handleBookingChange}
+        onChargeClick={(booking) => {
+          setSelectedBookingForPayment(booking);
+          setShowFinalPaymentModal(true);
+          setIsModalOpen(false); // Close booking modal
+        }}
       />
 
       {/* Edit Crews Modal */}
@@ -446,6 +480,23 @@ export default function AdminCalendar() {
           </div>
         </div>
       )}
+
+      <SquareFinalPayment
+        isOpen={showFinalPaymentModal}
+        onClose={() => {
+          setShowFinalPaymentModal(false);
+          setSelectedBookingForPayment(null);
+        }}
+        booking={selectedBookingForPayment}
+        rates={rates}
+        onSuccess={(result) => {
+          console.log('Payment completed:', result);
+          setShowFinalPaymentModal(false);
+          setSelectedBookingForPayment(null);
+          // Refresh calendar data
+          handleBookingChange();
+        }}
+      />
     </>
   );
 }

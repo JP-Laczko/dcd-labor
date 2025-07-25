@@ -7,6 +7,49 @@
   box-sizing: border-box;
 }
 
+/* Database Cleanup Section */
+.cleanup-section {
+  margin-top: 40px;
+}
+
+.cleanup-card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e1e5e9;
+}
+
+.cleanup-card h3 {
+  margin: 0 0 12px 0;
+  color: #2c3e50;
+  font-size: 18px;
+}
+
+.cleanup-card p {
+  margin: 0 0 20px 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.cleanup-btn {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cleanup-btn:hover {
+  background: linear-gradient(135deg, #c0392b, #a93226);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
 .admin-login {
   display: flex;
   flex-direction: column;
@@ -396,7 +439,7 @@
     justify-content: center;
     align-items: center;
     position: absolute;
-    top: 25px;
+    top: 22px;
     left: 3px;
     right: 3px;
     z-index: 9;
@@ -431,7 +474,7 @@
     flex: 1;
     overflow-y: auto;
     margin-bottom: 4px;
-    margin-top: 55px; /* Increased space for fixed day number and crew header - fixes iPhone Safari issue */
+    margin-top: 35px; /* Reduced space between crew count and bookings */
     padding-top: 2px;
   }
   
@@ -537,11 +580,11 @@
   /* iPhone Safari specific fixes */
   @supports (-webkit-touch-callout: none) {
     .bookings-list {
-      margin-top: 60px !important; /* Extra space for iPhone Safari */
+      margin-top: 38px !important; /* Reduced space for iPhone Safari */
     }
     
     .calendar-day .day-header {
-      top: 26px; /* Slightly lower positioning for iPhone Safari */
+      top: 22px; /* Consistent positioning for iPhone Safari */
     }
   }
 }
@@ -632,7 +675,7 @@
   border-bottom: 1px solid #eee;
   min-height: 20px;
   position: absolute;
-  top: 25px;
+  top: 22px;
   left: 0;
   right: 0;
   z-index: 9;
@@ -667,7 +710,7 @@
   flex: 1;
   overflow-y: auto;
   margin-bottom: 8px;
-  margin-top: 55px; /* Increased space for fixed day number and crew header - fixes iPhone Safari issue */
+  margin-top: 45px; /* Reduced space between crew count and bookings */
   padding-top: 4px;
 }
 

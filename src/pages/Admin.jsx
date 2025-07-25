@@ -55,7 +55,6 @@ export default function Admin() {
       const result = await mongoService.getRates();
       if (result.success && result.rates) {
         setRates(result.rates);
-        console.log('✅ Loaded rates for admin:', result.rates);
       } else {
         // Set default rates if loading failed
         const defaultRates = {
@@ -64,7 +63,6 @@ export default function Admin() {
           fourMan: 130
         };
         setRates(defaultRates);
-        console.log('⚠️ Using default rates for admin:', defaultRates);
       }
     } catch (error) {
       console.error('Error loading team rates:', error);
@@ -100,6 +98,33 @@ export default function Admin() {
     }
   };
 
+  const handleCleanupPastDates = async () => {
+    if (!confirm('This will permanently delete all past calendar availability entries to save database space. Bookings will be kept for records. Continue?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/cleanup/past-calendar-only', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      if (result.success) {
+        alert(`Cleanup successful! Deleted ${result.deleted.calendarEntries} past calendar entries.`);
+      } else {
+        alert('Error during cleanup: ' + result.error);
+      }
+    } catch (error) {
+      alert('Error during cleanup: ' + error.message);
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -190,6 +215,18 @@ export default function Admin() {
             </div>
           </div>
           <button onClick={saveRates} className="save-rates-btn">Save Rates</button>
+        </div>
+
+        {/* Database Cleanup Section */}
+        <div className="cleanup-section">
+          <h2>Database Maintenance</h2>
+          <div className="cleanup-card">
+            <h3>Clean Up Past Dates</h3>
+            <p>Remove past calendar availability entries to save database space. This keeps your booking records but deletes old availability data.</p>
+            <button onClick={handleCleanupPastDates} className="cleanup-btn">
+              🧹 Clean Up Past Calendar Data
+            </button>
+          </div>
         </div>
       </div>
     </div>

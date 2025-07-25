@@ -48,8 +48,8 @@ export default function CrewCalendar() {
       const availability = new Map();
       const today = new Date();
       
-      // Initialize next 2 weeks as unavailable
-      for (let i = 1; i <= 14; i++) {
+      // Initialize today + next 2 weeks as unavailable
+      for (let i = 0; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
@@ -83,7 +83,7 @@ export default function CrewCalendar() {
       }
       
       // Step 4: Calculate final availability
-      for (let i = 1; i <= 14; i++) {
+      for (let i = 0; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
@@ -95,7 +95,7 @@ export default function CrewCalendar() {
         availability.set(dateString, remainingSlots);
       }
       
-      console.log('📅 Final availability for next 14 days:', Object.fromEntries(availability));
+      console.log('📅 Final availability for today + next 14 days:', Object.fromEntries(availability));
       setDailyAvailability(availability);
     } catch (error) {
       console.error('❌ Calendar: Error fetching calendar availability:', error);
@@ -104,7 +104,7 @@ export default function CrewCalendar() {
       const fallbackAvailability = new Map();
       const today = new Date();
       
-      for (let i = 1; i <= 14; i++) {
+      for (let i = 0; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];

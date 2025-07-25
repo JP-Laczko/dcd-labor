@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import PaymentBookingModal from "../components/PaymentBookingModal";
 import "../styles/Schedule.css";
 import rateService from "../services/rateService";
-import emailService from "../services/emailService";
 import mongoService from "../services/mongoService";
 
 export default function Schedule() {
@@ -23,6 +23,8 @@ export default function Schedule() {
 
   const [rates, setRates] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
     // Initialize MongoDB connection and load rates
@@ -43,21 +45,17 @@ export default function Schedule() {
       // Load current rates from MongoDB
       try {
         const ratesResult = await mongoService.getRates();
-        console.log('📊 Schedule page rates result:', ratesResult);
         if (ratesResult.success) {
-          console.log('📊 Setting rates in Schedule page:', ratesResult.rates);
           setRates(ratesResult.rates);
         } else {
           // Fallback to rateService
           const currentRates = rateService.getRates();
-          console.log('📊 Using rateService fallback:', currentRates);
           setRates(currentRates);
         }
       } catch (error) {
         console.error('Error loading rates:', error);
         // Fallback to rateService
         const currentRates = rateService.getRates();
-        console.log('📊 Using rateService fallback (error):', currentRates);
         setRates(currentRates);
       }
     };
@@ -78,7 +76,6 @@ export default function Schedule() {
     "Pressure Washing"
   ];
 
-  console.log('📊 Current rates state in Schedule:', rates);
   
   const crewSizes = [
     { 
@@ -167,8 +164,17 @@ export default function Schedule() {
     setIsSubmitting(true);
 
     try {
-      // Check date availability before creating booking
+      // Check date availability before proceeding to payment
       const dateString = new Date(formData.date).toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      // FIRST CHECK: Block same-day booking
+      if (dateString === today) {
+        alert('Same-day booking is not available. Please select a future date.');
+        setIsSubmitting(false);
+        return;
+      }
+      
       const availabilityCheck = await mongoService.checkDateAvailability(dateString);
       
       if (!availabilityCheck.isAvailable) {
@@ -177,51 +183,40 @@ export default function Schedule() {
         return;
       }
 
-      // Save booking to MongoDB
-      const bookingResult = await mongoService.createBooking(formData);
-      
-      if (!bookingResult.success) {
-        throw new Error(bookingResult.error || 'Failed to save booking');
-      }
-
-      // Send booking confirmation emails
-      const emailResult = await emailService.sendBookingConfirmation(formData);
-      
-      // Update email status in database
-      if (bookingResult.booking) {
-        await mongoService.updateBookingStatus(
-          bookingResult.booking.bookingId, 
-          'pending', 
-          `Emails sent: ${emailResult.success ? 'Success' : 'Failed'}`
-        );
-      }
-      
-      if (emailResult.success) {
-        alert("Booking request submitted successfully! We'll contact you within 24 hours to confirm and process payment. Please check your email for confirmation details.");
-      } else {
-        alert("Booking submitted successfully but there was an issue sending confirmation emails. We'll still contact you to confirm your appointment.");
-      }
-      
-      // Reset form
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        address: "",
-        services: [],
-        date: "",
-        crewSize: "",
-        yardAcreage: "",
-        preferredHour: "",
-        notes: ""
-      });
+      // Set the selected date and open payment modal
+      setSelectedDate(new Date(formData.date));
+      setShowPaymentModal(true);
       
     } catch (error) {
-      console.error("Error submitting booking:", error);
-      alert("There was an error submitting your booking. Please try again or contact us directly.");
+      console.error("Error checking availability:", error);
+      alert("There was an error checking availability. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleBookingChange = () => {
+    // Refresh any calendar data if needed
+    console.log('Booking created successfully');
+  };
+
+  const handleClosePaymentModal = () => {
+    setShowPaymentModal(false);
+    setSelectedDate(null);
+    
+    // Reset form after successful booking
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+      services: [],
+      date: "",
+      crewSize: "",
+      yardAcreage: "",
+      preferredHour: "",
+      notes: ""
+    });
   };
 
   return (
@@ -400,15 +395,24 @@ export default function Schedule() {
 
             <div className="payment-info">
               <h3>Payment Information</h3>
-              <p>An $80 deposit will be required to confirm your booking. We accept all major credit cards and will process payment securely after we confirm your appointment details.</p>
+              <p>An $80 deposit is required to secure your booking. After submitting this form, you'll be prompted to complete the secure payment using Square's payment system.</p>
             </div>
 
             <button type="submit" className="submit-button" disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit Booking Request'}
+              {isSubmitting ? 'Checking Availability...' : 'Continue to Payment'}
             </button>
           </form>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      <PaymentBookingModal
+        isOpen={showPaymentModal}
+        onClose={handleClosePaymentModal}
+        selectedDate={selectedDate}
+        onBookingChange={handleBookingChange}
+        preFilledData={formData}
+      />
     </div>
   );
 }

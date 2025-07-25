@@ -9,7 +9,8 @@ export default function BookingModal({
   onClose, 
   selectedDate, 
   booking = null, // null for add, booking object for edit
-  onBookingChange 
+  onBookingChange,
+  onChargeClick = null // Optional prop for charge functionality
 }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -408,13 +409,15 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
         >
           Edit Booking
         </button>
-        <button 
-          type="button" 
-          onClick={handleChargeClick}
-          className="charge-button"
-        >
-          Charge & Complete
-        </button>
+        {onChargeClick && (
+          <button 
+            type="button" 
+            onClick={() => onChargeClick(booking)}
+            className="charge-button"
+          >
+            Charge & Complete
+          </button>
+        )}
         <button 
           type="button" 
           onClick={() => setShowDeleteConfirm(true)}

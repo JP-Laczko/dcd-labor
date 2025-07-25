@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import "../styles/CalendarSection.css";
 import mongoService from "../services/mongoService";
+import PaymentBookingModal from "./PaymentBookingModal";
 
 export default function CalendarSection() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dailyAvailability, setDailyAvailability] = useState(new Map());
-  const navigate = useNavigate();
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
     // Initialize MongoDB connection and fetch availability
@@ -67,10 +68,11 @@ export default function CalendarSection() {
       }
       
       // Step 4: Mark days available if actual bookings < allowed bookings
+      const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       for (let i = 1; i <= 14; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        const dateString = new Date(date).toISOString().split('T')[0];
+        const date = new Date(todayLocal);
+        date.setDate(todayLocal.getDate() + i);
+        const dateString = date.toISOString().split('T')[0];
         
         const allowedBookings = allowedBookingsPerDay.get(dateString) || 0;
         const actualBookings = actualBookingsPerDay.get(dateString) || 0;
@@ -78,21 +80,9 @@ export default function CalendarSection() {
         // Available if actual bookings < allowed bookings AND allowedBookings > 0
         const isAvailable = (allowedBookings > 0 && actualBookings < allowedBookings) ? 1 : 0;
         
-        // Debug logging for specific dates
-        if (dateString.includes('2025-07-25') || dateString.includes('2025-07-29')) {
-          console.log(`📅 DEBUG ${dateString}:`, {
-            allowedBookings,
-            actualBookings,
-            isAvailable,
-            calculation: `${actualBookings} < ${allowedBookings} = ${actualBookings < allowedBookings}`
-          });
-        }
-        
         // Use consistent date format (ISO string)
         availability.set(dateString, isAvailable);
       }
-      
-      console.log('📅 Final availability for next 14 days:', Object.fromEntries(availability));
       setDailyAvailability(availability);
     } catch (error) {
       console.error('❌ Calendar: Error fetching calendar availability:', error);
@@ -115,9 +105,18 @@ export default function CalendarSection() {
   const handleDateClick = (date) => {
     if (!date || !hasAvailability(date) || isPastDate(date)) return;
     
-    const dateString = date.toISOString().split('T')[0];
-    // Navigate to schedule page with pre-filled date
-    navigate(`/schedule?date=${dateString}`);
+    setSelectedDate(date);
+    setIsBookingModalOpen(true);
+  };
+
+  const handleBookingChange = () => {
+    // Refresh availability when a booking is made
+    fetchAvailability();
+  };
+
+  const handleCloseModal = () => {
+    setIsBookingModalOpen(false);
+    setSelectedDate(null);
   };
 
   const getDaysInMonth = (date) => {
@@ -237,6 +236,13 @@ export default function CalendarSection() {
           </div>
         </div>
       </div>
+      
+      <PaymentBookingModal
+        isOpen={isBookingModalOpen}
+        onClose={handleCloseModal}
+        selectedDate={selectedDate}
+        onBookingChange={handleBookingChange}
+      />
     </section>
   );
 }
