@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import { Resend } from 'resend';
+import squareup from 'squareup';
+import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
 
 // Load environment-specific config
@@ -20,6 +22,26 @@ const PORT = process.env.PORT || 3001;
 const resend = new Resend(process.env.RESEND_API_KEY);
 console.log('🔑 Resend API Key configured:', process.env.RESEND_API_KEY ? 'Yes' : 'No');
 console.log('📧 DCD Email configured:', process.env.DCD_EMAIL ? 'Yes' : 'No');
+
+// Initialize Square (only if we have credentials)
+let squareClient = null;
+if (process.env.SQUARE_ACCESS_TOKEN) {
+  try {
+    squareClient = new squareup({
+      accessToken: process.env.SQUARE_ACCESS_TOKEN,
+      environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
+    });
+    console.log('💳 Square client initialized successfully');
+  } catch (error) {
+    console.error('💳 Square client initialization failed:', error.message);
+  }
+} else {
+  console.log('💳 Square credentials not provided - payment features disabled');
+}
+
+console.log('💳 Square Access Token configured:', process.env.SQUARE_ACCESS_TOKEN ? 'Yes' : 'No');
+console.log('🏪 Square Application ID configured:', process.env.SQUARE_APPLICATION_ID ? 'Yes' : 'No');
+console.log('📍 Square Location ID configured:', process.env.SQUARE_LOCATION_ID ? 'Yes' : 'No');
 
 // Email configuration based on environment
 const getEmailConfig = () => {
@@ -138,38 +160,29 @@ app.get('/api/calendar-availability', async (req, res) => {
   }
 });
 
-// PUT /api/calendar-availability - Update calendar availability
+// PUT /api/calendar-availability - Update calendar availability (ADMIN ONLY - crew count setting)
 app.put('/api/calendar-availability', async (req, res) => {
   try {
     // Ensure database connection
     if (!db) {
       await connectToMongo();
     }
-    const { date, bookingChange, crewCount } = req.body;
-    console.log(`📅 PUT /api/calendar-availability - Date: ${date}, Change: ${bookingChange}, CrewCount: ${crewCount}`);
+    const { date, crewCount } = req.body;
+    console.log(`📅 PUT /api/calendar-availability - Date: ${date}, CrewCount: ${crewCount}`);
+    
+    // SECURITY: Only allow crewCount updates - never allow bookingChange
+    if (crewCount === undefined) {
+      return res.status(400).json({ error: 'crewCount must be provided' });
+    }
     
     const collection = db.collection('calendar_availability');
     
     // Find existing document or create new one
     const existingDoc = await collection.findOne({ date });
     
-    let newBookings;
-    
-    if (crewCount !== undefined) {
-      // Absolute crew count setting (from Edit Crews modal)
-      newBookings = Math.max(0, crewCount);
-      console.log(`📅 Setting absolute crew count for ${date}: ${newBookings}`);
-    } else if (bookingChange !== undefined) {
-      // Relative booking change (from booking creation/cancellation)
-      if (existingDoc) {
-        newBookings = Math.max(0, existingDoc.bookings + bookingChange);
-      } else {
-        newBookings = Math.max(0, 1 + bookingChange); // Default to 1 allowed booking
-      }
-      console.log(`📅 Applying booking change for ${date}: ${bookingChange} -> ${newBookings}`);
-    } else {
-      return res.status(400).json({ error: 'Either bookingChange or crewCount must be provided' });
-    }
+    // Absolute crew count setting (from Edit Crews modal ONLY)
+    const newBookings = Math.max(0, crewCount);
+    console.log(`📅 Setting absolute crew count for ${date}: ${newBookings}`);
     
     if (existingDoc) {
       // Update existing document
@@ -191,6 +204,85 @@ app.put('/api/calendar-availability', async (req, res) => {
   } catch (error) {
     console.error('❌ Error updating calendar availability:', error);
     res.status(500).json({ error: 'Failed to update calendar availability' });
+  }
+});
+
+// CLEANUP ENDPOINTS
+
+// DELETE /api/cleanup/past-dates - Remove past calendar availability and bookings to save space
+app.delete('/api/cleanup/past-dates', async (req, res) => {
+  try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    console.log('🧹 Cleaning up past dates before:', today);
+    
+    // Delete past calendar availability
+    const calendarCollection = db.collection('calendar_availability');
+    const calendarResult = await calendarCollection.deleteMany({
+      date: { $lt: today }
+    });
+    
+    // Delete past bookings (optional - you might want to keep for records)
+    const bookingsCollection = db.collection('bookings');
+    const bookingsResult = await bookingsCollection.deleteMany({
+      $or: [
+        { 'service.date': { $lt: new Date(today) } },
+        { 'date': { $lt: new Date(today) } }
+      ]
+    });
+    
+    console.log('🧹 Cleanup complete:', {
+      calendarEntriesDeleted: calendarResult.deletedCount,
+      bookingsDeleted: bookingsResult.deletedCount
+    });
+    
+    res.json({ 
+      success: true, 
+      deleted: {
+        calendarEntries: calendarResult.deletedCount,
+        bookings: bookingsResult.deletedCount
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error cleaning up past dates:', error);
+    res.status(500).json({ error: 'Failed to cleanup past dates' });
+  }
+});
+
+// DELETE /api/cleanup/past-calendar-only - Remove only past calendar availability (keep bookings for records)
+app.delete('/api/cleanup/past-calendar-only', async (req, res) => {
+  try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    console.log('🧹 Cleaning up past calendar availability before:', today);
+    
+    // Delete only past calendar availability, keep bookings for historical records
+    const calendarCollection = db.collection('calendar_availability');
+    const result = await calendarCollection.deleteMany({
+      date: { $lt: today }
+    });
+    
+    console.log('🧹 Calendar cleanup complete:', {
+      calendarEntriesDeleted: result.deletedCount
+    });
+    
+    res.json({ 
+      success: true, 
+      deleted: {
+        calendarEntries: result.deletedCount
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error cleaning up past calendar dates:', error);
+    res.status(500).json({ error: 'Failed to cleanup past calendar dates' });
   }
 });
 
@@ -347,7 +439,6 @@ app.get('/api/team-rates', async (req, res) => {
     const collection = db.collection('team_rates');
     const document = await collection.findOne({});
     
-    console.log('💰 Team rates from MongoDB:', document);
     
     if (document) {
       // Remove MongoDB _id field from response
@@ -376,7 +467,6 @@ app.put('/api/team-rates', async (req, res) => {
       await connectToMongo();
     }
     const rates = req.body;
-    console.log('💰 PUT /api/team-rates - Data:', rates);
     
     const collection = db.collection('team_rates');
     
@@ -387,7 +477,6 @@ app.put('/api/team-rates', async (req, res) => {
       { upsert: true }
     );
     
-    console.log('💰 Updated team rates');
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Error updating team rates:', error);
@@ -1095,6 +1184,306 @@ async function sendEmailViaResend(emailData, apiKey) {
     throw error;
   }
 }
+
+// SQUARE PAYMENT ENDPOINTS
+
+// POST /api/square/create-payment - Create payment with Square
+app.post('/api/square/create-payment', async (req, res) => {
+  try {
+    const { sourceId, amount, currency = 'USD', description, customerInfo, saveCard, locationId } = req.body;
+    console.log('💳 POST /api/square/create-payment - Amount:', amount, 'Description:', description);
+
+    if (!squareClient) {
+      return res.status(500).json({ error: 'Payment system not configured' });
+    }
+
+    if (!amount || amount < 100) { // Minimum $1.00 in cents
+      return res.status(400).json({ error: 'Invalid payment amount' });
+    }
+
+    const { paymentsApi, customersApi } = squareClient;
+    let customerId = null;
+    let cardToken = null;
+
+    // Create or find customer if saving card
+    if (saveCard && customerInfo) {
+      try {
+        // Try to create customer
+        const createCustomerRequest = {
+          givenName: customerInfo.name?.split(' ')[0] || '',
+          familyName: customerInfo.name?.split(' ').slice(1).join(' ') || '',
+          emailAddress: customerInfo.email,
+          phoneNumber: customerInfo.phone
+        };
+
+        const customerResponse = await customersApi.createCustomer(createCustomerRequest);
+        
+        if (customerResponse.result.customer) {
+          customerId = customerResponse.result.customer.id;
+          console.log('💳 Created Square customer:', customerId);
+        }
+      } catch (customerError) {
+        console.log('💳 Customer creation failed (may already exist):', customerError.message);
+        // Continue without customer creation
+      }
+    }
+
+    // Create payment
+    const paymentRequest = {
+      sourceId,
+      idempotencyKey: randomUUID(),
+      amountMoney: {
+        amount: BigInt(amount),
+        currency
+      },
+      locationId: locationId || process.env.SQUARE_LOCATION_ID,
+      note: description,
+      autocomplete: true
+    };
+
+    // Add customer ID if we have one
+    if (customerId) {
+      paymentRequest.customerId = customerId;
+    }
+
+    const paymentResponse = await paymentsApi.createPayment(paymentRequest);
+    
+    if (paymentResponse.result.payment) {
+      const payment = paymentResponse.result.payment;
+      console.log('💳 Created Square payment:', payment.id);
+
+      // If card was saved and payment successful, get the card token
+      if (saveCard && customerId && payment.cardDetails) {
+        cardToken = payment.cardDetails.card?.cardId || payment.sourceId;
+      }
+
+      res.json({
+        success: true,
+        payment: {
+          id: payment.id,
+          status: payment.status,
+          amountMoney: payment.amountMoney,
+          createdAt: payment.createdAt
+        },
+        customerId,
+        cardToken
+      });
+    } else {
+      throw new Error('Payment creation failed');
+    }
+  } catch (error) {
+    console.error('❌ Error creating Square payment:', error);
+    
+    let errorMessage = 'Payment processing failed';
+    if (error.errors && error.errors.length > 0) {
+      errorMessage = error.errors[0].detail || errorMessage;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// POST /api/square/charge-card-on-file - Charge a saved card
+app.post('/api/square/charge-card-on-file', async (req, res) => {
+  try {
+    const { customerId, amount, currency = 'USD', description, locationId } = req.body;
+    console.log('💳 POST /api/square/charge-card-on-file - Customer:', customerId, 'Amount:', amount);
+
+    if (!squareClient) {
+      return res.status(500).json({ error: 'Payment system not configured' });
+    }
+
+    if (!customerId) {
+      return res.status(400).json({ error: 'Customer ID is required' });
+    }
+
+    if (!amount || amount < 100) { // Minimum $1.00 in cents
+      return res.status(400).json({ error: 'Invalid payment amount' });
+    }
+
+    const { paymentsApi, customersApi } = squareClient;
+
+    // Get customer's cards
+    const customerResponse = await customersApi.retrieveCustomer(customerId);
+    
+    if (!customerResponse.result.customer || !customerResponse.result.customer.cards || customerResponse.result.customer.cards.length === 0) {
+      return res.status(400).json({ error: 'No saved card found for customer' });
+    }
+
+    // Use the first (most recent) card
+    const card = customerResponse.result.customer.cards[0];
+
+    // Create payment with stored card
+    const paymentRequest = {
+      sourceId: card.id,
+      idempotencyKey: randomUUID(),
+      amountMoney: {
+        amount: BigInt(amount),
+        currency
+      },
+      locationId: locationId || process.env.SQUARE_LOCATION_ID,
+      note: description,
+      customerId,
+      autocomplete: true
+    };
+
+    const paymentResponse = await paymentsApi.createPayment(paymentRequest);
+    
+    if (paymentResponse.result.payment) {
+      const payment = paymentResponse.result.payment;
+      console.log('💳 Charged card on file:', payment.id);
+
+      res.json({
+        success: true,
+        payment: {
+          id: payment.id,
+          status: payment.status,
+          amountMoney: payment.amountMoney,
+          createdAt: payment.createdAt
+        }
+      });
+    } else {
+      throw new Error('Payment failed');
+    }
+  } catch (error) {
+    console.error('❌ Error charging card on file:', error);
+    
+    let errorMessage = 'Failed to charge saved card';
+    if (error.errors && error.errors.length > 0) {
+      errorMessage = error.errors[0].detail || errorMessage;
+    }
+    
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// POST /api/create-booking-with-payment - Create booking after successful payment
+app.post('/api/create-booking-with-payment', async (req, res) => {
+  try {
+    // Ensure database connection
+    if (!db) {
+      const connected = await connectToMongo();
+      if (!connected) {
+        return res.status(500).json({ error: 'Database connection failed' });
+      }
+    }
+
+    const { bookingData, paymentInfo } = req.body;
+    console.log('📋💳 POST /api/create-booking-with-payment - Booking:', bookingData.customer?.name, 'Payment:', paymentInfo.paymentId);
+
+    // CRITICAL: Check availability before creating booking, even after payment
+    const serviceDate = new Date(bookingData.service.date);
+    const dateString = serviceDate.toISOString().split('T')[0];
+    
+    // Get calendar availability for the date
+    const calendarCollection = db.collection('calendar');
+    const availabilityDoc = await calendarCollection.findOne({ date: dateString });
+    const allowedBookings = availabilityDoc?.bookings || 0;
+    
+    if (allowedBookings === 0) {
+      console.log('🚫 Booking blocked: Date not available in calendar');
+      return res.status(400).json({ 
+        error: 'This date is not available for booking',
+        refundNeeded: true 
+      });
+    }
+    
+    // Count existing bookings for this date
+    const bookingCollection = db.collection('bookings');
+    const existingBookings = await bookingCollection.countDocuments({
+      $or: [
+        { 'service.date': serviceDate },
+        { 'date': serviceDate }
+      ]
+    });
+    
+    if (existingBookings >= allowedBookings) {
+      console.log('🚫 Booking blocked: No slots remaining', { existing: existingBookings, allowed: allowedBookings });
+      return res.status(400).json({ 
+        error: 'This date is fully booked. No slots remaining.',
+        refundNeeded: true 
+      });
+    }
+
+    console.log('✅ Availability check passed:', { existing: existingBookings, allowed: allowedBookings, remaining: allowedBookings - existingBookings });
+
+    const collection = db.collection('bookings');
+    
+    // Add payment info and timestamps to booking
+    const booking = {
+      customer: bookingData.customer,
+      service: {
+        ...bookingData.service,
+        date: new Date(bookingData.service.date)
+      },
+      bookingId: `booking_${Date.now()}`,
+      paymentInfo: {
+        depositPaid: true,
+        depositAmount: paymentInfo.amount,
+        paymentId: paymentInfo.paymentId,
+        customerId: paymentInfo.customerId,
+        cardToken: paymentInfo.cardToken,
+        paidAt: new Date()
+      },
+      status: {
+        current: 'confirmed',
+        history: [
+          {
+            status: 'pending',
+            timestamp: new Date(),
+            note: 'Booking created'
+          },
+          {
+            status: 'confirmed', 
+            timestamp: new Date(),
+            note: `Deposit payment of $${paymentInfo.amount} received via Square`
+          }
+        ]
+      },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const result = await collection.insertOne(booking);
+    console.log('📋💳 Created booking with payment:', result.insertedId);
+    
+    // Send confirmation emails
+    try {
+      await sendCustomerConfirmation(bookingData, process.env.RESEND_API_KEY, process.env.DCD_EMAIL);
+      await sendDCDNotification(bookingData, process.env.RESEND_API_KEY, process.env.DCD_EMAIL);
+    } catch (emailError) {
+      console.error('Error sending emails:', emailError);
+      // Don't fail booking creation if emails fail
+    }
+    
+    res.json({ success: true, bookingId: booking.bookingId, _id: result.insertedId });
+  } catch (error) {
+    console.error('❌ Error creating booking with payment:', error);
+    res.status(500).json({ error: 'Failed to create booking', details: error.message });
+  }
+});
+
+// Send booking confirmation emails endpoint
+app.post('/api/send-booking-confirmation', async (req, res) => {
+  try {
+    const { bookingData } = req.body;
+    
+    if (!bookingData) {
+      return res.status(400).json({ error: 'Booking data is required' });
+    }
+    
+    // Send confirmation emails
+    await sendCustomerConfirmation(bookingData, process.env.RESEND_API_KEY, process.env.DCD_EMAIL);
+    await sendDCDNotification(bookingData, process.env.RESEND_API_KEY, process.env.DCD_EMAIL);
+    
+    res.json({ success: true, message: 'Booking confirmation emails sent successfully' });
+  } catch (error) {
+    console.error('❌ Error sending booking confirmation emails:', error);
+    res.status(500).json({ error: 'Failed to send emails', details: error.message });
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
