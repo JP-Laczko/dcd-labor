@@ -69,7 +69,6 @@ export default function CrewCalendar() {
       
       // Step 3: Get actual bookings count per day
       const bookingsResult = await mongoService.getBookings();
-      console.log('📅 Bookings data:', bookingsResult);
       
       const actualBookingsPerDay = new Map();
       if (bookingsResult.success && bookingsResult.bookings) {
@@ -95,7 +94,6 @@ export default function CrewCalendar() {
         availability.set(dateString, remainingSlots);
       }
       
-      console.log('📅 Final availability for today + next 14 days:', Object.fromEntries(availability));
       setDailyAvailability(availability);
     } catch (error) {
       console.error('❌ Calendar: Error fetching calendar availability:', error);
@@ -118,7 +116,6 @@ export default function CrewCalendar() {
   const fetchBookings = async () => {
     try {
       const bookingsResult = await mongoService.getBookings();
-      console.log('📅 Bookings data:', bookingsResult);
       
       const bookingsByDate = new Map();
       if (bookingsResult.success && bookingsResult.bookings) {

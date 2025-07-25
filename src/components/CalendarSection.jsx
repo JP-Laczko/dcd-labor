@@ -53,7 +53,6 @@ export default function CalendarSection() {
       
       // Step 3: Get all bookings and count actual bookings per day
       const bookingsResult = await mongoService.getBookings();
-      console.log('📅 Bookings data:', bookingsResult);
       
       const actualBookingsPerDay = new Map();
       if (bookingsResult.success && bookingsResult.bookings) {

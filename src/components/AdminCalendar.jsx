@@ -101,7 +101,6 @@ export default function AdminCalendar() {
       
       // Step 3: Get actual bookings count per day
       const bookingsResult = await mongoService.getBookings();
-      console.log('📅 Bookings data:', bookingsResult);
       
       const actualBookingsPerDay = new Map();
       if (bookingsResult.success && bookingsResult.bookings) {
@@ -127,7 +126,6 @@ export default function AdminCalendar() {
         availability.set(dateString, allowedBookings);
       }
       
-      console.log('📅 Final availability for today + next 14 days:', Object.fromEntries(availability));
       setDailyAvailability(availability);
     } catch (error) {
       console.error('❌ Calendar: Error fetching calendar availability:', error);
@@ -150,7 +148,6 @@ export default function AdminCalendar() {
   const fetchBookings = async () => {
     try {
       const bookingsResult = await mongoService.getBookings();
-      console.log('📅 Bookings data:', bookingsResult);
       
       const bookingsByDate = new Map();
       if (bookingsResult.success && bookingsResult.bookings) {
@@ -326,14 +323,6 @@ export default function AdminCalendar() {
             const availableSlots = dailyAvailability.get(dateString) || 0;
             const dayBookings = dailyBookings.get(dateString) || [];
             
-            // Debug logging for specific dates
-            if (dateString.includes('2025-07-25') || dateString.includes('2025-07-29')) {
-              console.log(`📅 ADMIN DEBUG ${dateString}:`, {
-                availableSlots,
-                bookingsCount: dayBookings.length,
-                rawAvailability: dailyAvailability.get(dateString)
-              });
-            }
 
             return (
               <div key={index} className="calendar-day active" onClick={() => handleDateClick(date)}>

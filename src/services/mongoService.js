@@ -62,54 +62,49 @@ class MongoService {
   // RATE MANAGEMENT
   async getRates() {
     try {
-      if (this.isConnected) {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/team-rates`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const rates = await response.json();
-          console.log('✅ Loaded rates from MongoDB:', rates);
-          return { success: true, rates };
-        } else {
-          throw new Error(`Failed to fetch rates: ${response.status}`);
+      // Always try to connect first and wait for it
+      const connected = await this.connect();
+      
+      if (!connected) {
+        throw new Error('Failed to connect to backend API');
+      }
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/team-rates`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
         }
+      });
+      
+      if (response.ok) {
+        const rates = await response.json();
+        // Save to localStorage for caching
+        localStorage.setItem('teamRates', JSON.stringify(rates));
+        return { success: true, rates };
       } else {
-        // Fallback to localStorage
-        const savedRates = localStorage.getItem('teamRates');
-        if (savedRates) {
-          const rates = JSON.parse(savedRates);
-          // Check for old format and migrate
-          if (rates.twoMan && typeof rates.twoMan === 'object' && rates.twoMan.high) {
-            const migratedRates = {
-              twoMan: rates.twoMan.high || 70,
-              threeMan: rates.threeMan.high || 100,
-              fourMan: rates.fourMan.high || 130
-            };
-            localStorage.setItem('teamRates', JSON.stringify(migratedRates));
-            return { success: true, rates: migratedRates };
-          }
-          return { success: true, rates };
-        } else {
-          const defaultRates = { twoMan: 70, threeMan: 100, fourMan: 130 };
-          // Save default rates to localStorage for future use
-          localStorage.setItem('teamRates', JSON.stringify(defaultRates));
-          console.log('💾 Saved default rates to localStorage:', defaultRates);
-          return { success: true, rates: defaultRates };
-        }
+        throw new Error(`Failed to fetch rates: ${response.status}`);
       }
     } catch (error) {
-      console.error('Error getting rates:', error);
       // Fallback to localStorage
       const savedRates = localStorage.getItem('teamRates');
       if (savedRates) {
         const rates = JSON.parse(savedRates);
+        // Check for old format and migrate
+        if (rates.twoMan && typeof rates.twoMan === 'object' && rates.twoMan.high) {
+          const migratedRates = {
+            twoMan: rates.twoMan.high || 70,
+            threeMan: rates.threeMan.high || 100,
+            fourMan: rates.fourMan.high || 130
+          };
+          localStorage.setItem('teamRates', JSON.stringify(migratedRates));
+          return { success: true, rates: migratedRates };
+        }
         return { success: true, rates };
+      } else {
+        const defaultRates = { twoMan: 70, threeMan: 100, fourMan: 130 };
+        localStorage.setItem('teamRates', JSON.stringify(defaultRates));
+        console.log('💾 Saved default rates to localStorage:', defaultRates);
+        return { success: true, rates: defaultRates };
       }
-      return { success: false, error: error.message };
     }
   }
 
@@ -324,7 +319,6 @@ class MongoService {
 
   async getBookings(filters = {}) {
     try {
-      console.log('🗄️ getBookings called with filters:', filters);
       console.log('🗄️ isConnected:', this.isConnected);
       
       if (this.isConnected) {
@@ -379,7 +373,6 @@ class MongoService {
         console.log('🗄️ Using localStorage fallback for bookings');
         let bookings = this.getLocalBookings();
         console.log('🗄️ Raw bookings from localStorage:', bookings);
-        console.log('🗄️ Bookings count:', bookings.length);
         
         // Log each booking structure
         bookings.forEach((booking, index) => {
@@ -622,7 +615,6 @@ class MongoService {
       
       if (this.isConnected) {
         // Real MongoDB operation would go here
-        console.log('Setting daily booking limit in MongoDB:', dateString, maxBookings);
         return { success: true };
       } else {
         // Fallback to localStorage
@@ -647,40 +639,6 @@ class MongoService {
     }
   }
 
-  // RATES OPERATIONS
-  async getRates() {
-    try {
-      if (this.isConnected) {
-        try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/team-rates`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          
-          const data = await response.json();
-          return { success: true, rates: data };
-        } catch (apiError) {
-          console.error('API call failed, falling back to localStorage:', apiError);
-          this.isConnected = false;
-          const rates = JSON.parse(localStorage.getItem('teamRates') || '{}');
-          return { success: true, rates };
-        }
-      } else {
-        // Fallback to localStorage (existing rateService)
-        const rates = JSON.parse(localStorage.getItem('teamRates') || '{}');
-        return { success: true, rates };
-      }
-    } catch (error) {
-      console.error('Error fetching rates:', error);
-      return { success: false, error: error.message };
-    }
-  }
 
   async updateRates(newRates) {
     try {
@@ -722,8 +680,6 @@ class MongoService {
     const bookingsStr = localStorage.getItem('dcd_bookings') || '[]';
     console.log('🗄️ localStorage dcd_bookings raw string:', bookingsStr);
     const bookings = JSON.parse(bookingsStr);
-    console.log('🗄️ getLocalBookings parsed result:', bookings);
-    console.log('🗄️ getLocalBookings count:', bookings.length);
     return bookings;
   }
 

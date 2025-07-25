@@ -91,6 +91,7 @@ async function connectToMongo() {
     await client.connect();
     db = client.db(process.env.MONGODB_DB_NAME);
     console.log('✅ Connected to MongoDB successfully');
+    console.log('📊 Database name:', process.env.MONGODB_DB_NAME);
     console.log('📊 Database configured:', process.env.MONGODB_DB_NAME ? 'Yes' : 'No');
     return true;
   } catch (error) {
@@ -437,12 +438,15 @@ app.get('/api/team-rates', async (req, res) => {
       await connectToMongo();
     }
     const collection = db.collection('team_rates');
+    console.log('🔍 Fetching team rates from team_rates collection...');
     const document = await collection.findOne({});
     
+    console.log('💰 Team rates document from MongoDB:', document);
     
     if (document) {
       // Remove MongoDB _id field from response
       const { _id, ...rates } = document;
+      console.log('💰 Returning stored team rates:', rates);
       res.json(rates);
     } else {
       // Return default rates if none found
@@ -451,6 +455,7 @@ app.get('/api/team-rates', async (req, res) => {
         threeMan: 100,
         fourMan: 130
       };
+      console.log('💰 No team rates found in database, returning default rates:', defaultRates);
       res.json(defaultRates);
     }
   } catch (error) {
@@ -467,15 +472,22 @@ app.put('/api/team-rates', async (req, res) => {
       await connectToMongo();
     }
     const rates = req.body;
+    console.log('💰 PUT /api/team-rates - Updating rates with:', rates);
     
     const collection = db.collection('team_rates');
     
     // Upsert (update or insert) the rates document
-    await collection.replaceOne(
+    const result = await collection.replaceOne(
       {}, // Match any document (assuming only one rates document)
       rates,
       { upsert: true }
     );
+    
+    console.log('💰 Team rates update result:', { 
+      matchedCount: result.matchedCount, 
+      modifiedCount: result.modifiedCount, 
+      upsertedId: result.upsertedId 
+    });
     
     res.json({ success: true });
   } catch (error) {
@@ -843,8 +855,15 @@ async function getRateRange(crewSize) {
     const ratesDoc = await collection.findOne({});
     
     if (ratesDoc) {
-      const crewSizeKey = `${crewSize}Man`;
-      const rate = ratesDoc[crewSizeKey];
+      // Map numeric crew size to database key format
+      const crewSizeMapping = {
+        '2': 'twoMan',
+        '3': 'threeMan', 
+        '4': 'fourMan'
+      };
+      
+      const dbKey = crewSizeMapping[crewSize?.toString()];
+      const rate = ratesDoc[dbKey];
       
       if (rate) {
         return `$${rate}/hour`;
