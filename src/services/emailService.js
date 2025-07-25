@@ -5,17 +5,16 @@ import config from '../config/environment.js';
 
 // Determine the API URL based on environment
 const getApiUrl = () => {
-  if (config.isDevelopment) {
-    return 'http://localhost:3001/api';
-  }
-  // In production, use deployed backend URL from environment variable
-  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+  // Use environment variable if set, otherwise default to localhost
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || config.API_BASE_URL || 'http://localhost:3001';
+  return `${baseUrl}/api`;
 };
 
 export const emailService = {
   async sendBookingConfirmation(bookingData) {
     try {
       const apiUrl = `${getApiUrl()}/send-email`;
+      console.log('🔍 Email API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -25,11 +24,14 @@ export const emailService = {
         body: JSON.stringify({ bookingData })
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+        console.error('❌ HTTP Error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('❌ Response body:', errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
+
+      const result = await response.json();
 
       return { success: true, message: result.message, details: result.details };
     } catch (error) {
