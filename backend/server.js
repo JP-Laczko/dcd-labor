@@ -330,7 +330,7 @@ app.post('/api/bookings', async (req, res) => {
       await connectToMongo();
     }
     const bookingData = req.body;
-    console.log('📋 POST /api/bookings - Data:', bookingData);
+    console.log('📋 POST /api/bookings - Creating booking for:', bookingData.customer?.name || 'unknown customer');
     
     const collection = db.collection('bookings');
     
@@ -361,7 +361,7 @@ app.put('/api/bookings/:id', async (req, res) => {
     }
     const { id } = req.params;
     const bookingData = req.body;
-    console.log('📋 PUT /api/bookings/:id - ID:', id, 'Data:', bookingData);
+    console.log('📋 PUT /api/bookings/:id - Updating booking ID:', id, 'for customer:', bookingData.customer?.name || 'unknown customer');
     
     const collection = db.collection('bookings');
     
@@ -494,7 +494,7 @@ app.post('/api/send-email', async (req, res) => {
       await connectToMongo();
     }
     const { bookingData } = req.body;
-    console.log('📧 POST /api/send-email - Data:', bookingData);
+    console.log('📧 POST /api/send-email - Sending email for:', bookingData.customer?.name || 'unknown customer');
     
     if (!process.env.RESEND_API_KEY || !process.env.DCD_EMAIL) {
       return res.status(500).json({ error: 'Email configuration missing' });
