@@ -245,6 +245,22 @@ export default function CalendarSectionTimeSlots() {
             })}
           </div>
         </div>
+        
+        {/* Calendar Legend */}
+        <div className="calendar-legend">
+          <div className="legend-item">
+            <div className="legend-color available"></div>
+            <span>✨ Available slots</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-color unavailable"></div>
+            <span>🚫 No slots available</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-color past"></div>
+            <span>⏰ Past dates</span>
+          </div>
+        </div>
       </div>
 
       {/* Time Slot Selector Modal */}

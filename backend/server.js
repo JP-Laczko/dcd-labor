@@ -814,6 +814,8 @@ app.get('/api/email-preview', async (req, res) => {
     let htmlContent;
     if (type === 'customer') {
       htmlContent = await generateCustomerEmailPreview(sampleBookingData, process.env.DCD_EMAIL);
+    } else if (type === 'review') {
+      htmlContent = await generateGoogleReviewEmailPreview(sampleBookingData, process.env.DCD_EMAIL);
     } else {
       htmlContent = await generateDCDEmailPreview(sampleBookingData, process.env.DCD_EMAIL);
     }
@@ -823,6 +825,33 @@ app.get('/api/email-preview', async (req, res) => {
   } catch (error) {
     console.error('❌ Error generating email preview:', error);
     res.status(500).json({ error: 'Failed to generate email preview' });
+  }
+});
+
+// POST /api/send-review-email - Send Google review request email
+app.post('/api/send-review-email', async (req, res) => {
+  try {
+    const { bookingData } = req.body;
+    console.log('📧 POST /api/send-review-email - Sending review email for:', bookingData.customer?.name || 'unknown customer');
+    
+    if (!process.env.RESEND_API_KEY || !process.env.DCD_EMAIL) {
+      return res.status(500).json({ error: 'Email configuration missing' });
+    }
+
+    // Send Google review email
+    const reviewEmail = await sendGoogleReviewEmail(bookingData, process.env.RESEND_API_KEY, process.env.DCD_EMAIL);
+
+    console.log('📧 Review email sent successfully');
+    res.json({ 
+      success: true, 
+      message: 'Review email sent successfully',
+      details: {
+        reviewEmail: reviewEmail
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error sending review email:', error);
+    res.status(500).json({ error: 'Failed to send review email', details: error.message });
   }
 });
 
@@ -846,8 +875,9 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
         .header { background: #22c55e; color: white; padding: 20px; text-align: center; }
         .content { padding: 20px; background: #f9f9f9; }
         .booking-details { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; }
-        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .detail-label { font-weight: bold; }
+        .detail-row { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .detail-label { font-weight: bold; min-width: 180px; display: inline-block; vertical-align: top; }
+        .detail-value { display: inline-block; vertical-align: top; }
         .services-list { margin: 10px 0; }
         .service-item { padding: 5px 0; }
         .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
@@ -868,28 +898,28 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
             <h3>Booking Details</h3>
             
             <div class="detail-row">
-              <span class="detail-label">Name: </span>
-              <span>${bookingData.customer?.name || bookingData.name}</span>
+              <span class="detail-label">Name:</span>
+              <span class="detail-value">${bookingData.customer?.name || bookingData.name}</span>
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Email: </span>
-              <span>${bookingData.customer?.email || bookingData.email}</span>
+              <span class="detail-label">Email:</span>
+              <span class="detail-value">${bookingData.customer?.email || bookingData.email}</span>
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Phone: </span>
-              <span>${bookingData.customer?.phone || bookingData.phone}</span>
+              <span class="detail-label">Phone:</span>
+              <span class="detail-value">${bookingData.customer?.phone || bookingData.phone}</span>
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Service Address: </span>
-              <span>${bookingData.service?.address || bookingData.address}</span>
+              <span class="detail-label">Service Address:</span>
+              <span class="detail-value">${bookingData.service?.address || bookingData.address}</span>
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Preferred Date: </span>
-              <span>${new Date(bookingData.service?.date || bookingData.date).toLocaleDateString('en-US', { 
+              <span class="detail-label">Preferred Date:</span>
+              <span class="detail-value">${new Date(bookingData.service?.date || bookingData.date).toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 
@@ -898,14 +928,14 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Crew Size: </span>
-              <span>${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
+              <span class="detail-label">Crew Size:</span>
+              <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
             </div>
             
             ${(bookingData.yardAcreage) ? `
             <div class="detail-row">
-              <span class="detail-label">Approximate Yard Acreage: </span>
-              <span>${bookingData.yardAcreage}</span>
+              <span class="detail-label">Approximate Yard Acreage:</span>
+              <span class="detail-value">${bookingData.yardAcreage}</span>
             </div>
             ` : ''}
             
@@ -918,20 +948,20 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
             
             ${(bookingData.displayTime || bookingData.service?.displayTime) ? `
             <div class="detail-row">
-              <span class="detail-label">Scheduled Time: </span>
-              <span>${bookingData.displayTime || bookingData.service?.displayTime}</span>
+              <span class="detail-label">Scheduled Time:</span>
+              <span class="detail-value">${bookingData.displayTime || bookingData.service?.displayTime}</span>
             </div>
             ` : ''}
 
             <div class="detail-row">
-              <span class="detail-label">Rate: </span>
-              <span>${rateRange}</span>
+              <span class="detail-label">Rate:</span>
+              <span class="detail-value">${rateRange}</span>
             </div>
             
             ${(bookingData.notes || bookingData.service?.description) ? `
             <div class="detail-row">
-              <span class="detail-label">Additional Notes: </span>
-              <span>${bookingData.notes || bookingData.service?.description}</span>
+              <span class="detail-label">Additional Notes:</span>
+              <span class="detail-value">${bookingData.notes || bookingData.service?.description}</span>
             </div>
             ` : ''}
           </div>
@@ -1004,8 +1034,8 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
             <h3>Customer Information</h3>
             
             <div class="detail-row">
-              <span class="detail-label">Name: </span>
-              <span>${bookingData.customer?.name || bookingData.name}</span>
+              <span class="detail-label">Name:</span>
+              <span class="detail-value">${bookingData.customer?.name || bookingData.name}</span>
             </div>
             
             <div class="detail-row">
@@ -1019,8 +1049,8 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Service Address: </span>
-              <span>${bookingData.service?.address || bookingData.address}</span>
+              <span class="detail-label">Service Address:</span>
+              <span class="detail-value">${bookingData.service?.address || bookingData.address}</span>
             </div>
           </div>
           
@@ -1028,8 +1058,8 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
             <h3>Service Details</h3>
             
             <div class="detail-row">
-              <span class="detail-label">Preferred Date: </span>
-              <span>${new Date(bookingData.service?.date || bookingData.date).toLocaleDateString('en-US', { 
+              <span class="detail-label">Preferred Date:</span>
+              <span class="detail-value">${new Date(bookingData.service?.date || bookingData.date).toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 
@@ -1038,14 +1068,14 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Crew Size: </span>
-              <span>${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
+              <span class="detail-label">Crew Size:</span>
+              <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
             </div>
             
             ${(bookingData.yardAcreage) ? `
             <div class="detail-row">
-              <span class="detail-label">Approximate Yard Acreage: </span>
-              <span>${bookingData.yardAcreage}</span>
+              <span class="detail-label">Approximate Yard Acreage:</span>
+              <span class="detail-value">${bookingData.yardAcreage}</span>
             </div>
             ` : ''}
             
@@ -1058,20 +1088,20 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
             
             ${(bookingData.displayTime || bookingData.service?.displayTime) ? `
             <div class="detail-row">
-              <span class="detail-label">Scheduled Time: </span>
-              <span>${bookingData.displayTime || bookingData.service?.displayTime}</span>
+              <span class="detail-label">Scheduled Time:</span>
+              <span class="detail-value">${bookingData.displayTime || bookingData.service?.displayTime}</span>
             </div>
             ` : ''}
 
             <div class="detail-row">
-              <span class="detail-label">Rate: </span>
-              <span>${rateRange}</span>
+              <span class="detail-label">Rate:</span>
+              <span class="detail-value">${rateRange}</span>
             </div>
             
             ${(bookingData.notes || bookingData.service?.description) ? `
             <div class="detail-row">
-              <span class="detail-label">Additional Notes: </span>
-              <span>${bookingData.notes || bookingData.service?.description}</span>
+              <span class="detail-label">Additional Notes:</span>
+              <span class="detail-value">${bookingData.notes || bookingData.service?.description}</span>
             </div>
             ` : ''}
           </div>
@@ -1163,8 +1193,9 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
         .header { background: #22c55e; color: white; padding: 20px; text-align: center; }
         .content { padding: 20px; background: #f9f9f9; }
         .booking-details { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; }
-        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .detail-label { font-weight: bold; }
+        .detail-row { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .detail-label { font-weight: bold; min-width: 180px; display: inline-block; vertical-align: top; }
+        .detail-value { display: inline-block; vertical-align: top; }
         .services-list { margin: 10px 0; }
         .service-item { padding: 5px 0; }
         .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
@@ -1185,28 +1216,28 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
             <h3>Booking Details</h3>
             
             <div class="detail-row">
-              <span class="detail-label">Name: </span>
-              <span>${bookingData.customer?.name || bookingData.name}</span>
+              <span class="detail-label">Name:</span>
+              <span class="detail-value">${bookingData.customer?.name || bookingData.name}</span>
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Email: </span>
-              <span>${bookingData.customer?.email || bookingData.email}</span>
+              <span class="detail-label">Email:</span>
+              <span class="detail-value">${bookingData.customer?.email || bookingData.email}</span>
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Phone: </span>
-              <span>${bookingData.customer?.phone || bookingData.phone}</span>
+              <span class="detail-label">Phone:</span>
+              <span class="detail-value">${bookingData.customer?.phone || bookingData.phone}</span>
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Service Address: </span>
-              <span>${bookingData.service?.address || bookingData.address}</span>
+              <span class="detail-label">Service Address:</span>
+              <span class="detail-value">${bookingData.service?.address || bookingData.address}</span>
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Preferred Date: </span>
-              <span>${new Date(bookingData.service?.date || bookingData.date).toLocaleDateString('en-US', { 
+              <span class="detail-label">Preferred Date:</span>
+              <span class="detail-value">${new Date(bookingData.service?.date || bookingData.date).toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 
@@ -1215,14 +1246,14 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Crew Size: </span>
-              <span>${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
+              <span class="detail-label">Crew Size:</span>
+              <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
             </div>
             
             ${(bookingData.yardAcreage) ? `
             <div class="detail-row">
-              <span class="detail-label">Approximate Yard Acreage: </span>
-              <span>${bookingData.yardAcreage}</span>
+              <span class="detail-label">Approximate Yard Acreage:</span>
+              <span class="detail-value">${bookingData.yardAcreage}</span>
             </div>
             ` : ''}
             
@@ -1235,20 +1266,20 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
             
             ${(bookingData.displayTime || bookingData.service?.displayTime) ? `
             <div class="detail-row">
-              <span class="detail-label">Scheduled Time: </span>
-              <span>${bookingData.displayTime || bookingData.service?.displayTime}</span>
+              <span class="detail-label">Scheduled Time:</span>
+              <span class="detail-value">${bookingData.displayTime || bookingData.service?.displayTime}</span>
             </div>
             ` : ''}
 
             <div class="detail-row">
-              <span class="detail-label">Rate: </span>
-              <span>${rateRange}</span>
+              <span class="detail-label">Rate:</span>
+              <span class="detail-value">${rateRange}</span>
             </div>
             
             ${(bookingData.notes || bookingData.service?.description) ? `
             <div class="detail-row">
-              <span class="detail-label">Additional Notes: </span>
-              <span>${bookingData.notes || bookingData.service?.description}</span>
+              <span class="detail-label">Additional Notes:</span>
+              <span class="detail-value">${bookingData.notes || bookingData.service?.description}</span>
             </div>
             ` : ''}
           </div>
@@ -1308,8 +1339,9 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
         .header { background: #1f2937; color: white; padding: 20px; text-align: center; }
         .content { padding: 20px; background: #f9f9f9; }
         .booking-details { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; }
-        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .detail-label { font-weight: bold; }
+        .detail-row { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .detail-label { font-weight: bold; min-width: 180px; display: inline-block; vertical-align: top; }
+        .detail-value { display: inline-block; vertical-align: top; }
         .services-list { margin: 10px 0; }
         .service-item { padding: 5px 0; }
         .urgent { background: #fee2e2; border: 1px solid #ef4444; padding: 15px; margin: 15px 0; border-radius: 8px; }
@@ -1332,8 +1364,8 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
             <h3>Customer Information</h3>
             
             <div class="detail-row">
-              <span class="detail-label">Name: </span>
-              <span>${bookingData.customer?.name || bookingData.name}</span>
+              <span class="detail-label">Name:</span>
+              <span class="detail-value">${bookingData.customer?.name || bookingData.name}</span>
             </div>
             
             <div class="detail-row">
@@ -1347,8 +1379,8 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Service Address: </span>
-              <span>${bookingData.service?.address || bookingData.address}</span>
+              <span class="detail-label">Service Address:</span>
+              <span class="detail-value">${bookingData.service?.address || bookingData.address}</span>
             </div>
           </div>
           
@@ -1356,8 +1388,8 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
             <h3>Service Details</h3>
             
             <div class="detail-row">
-              <span class="detail-label">Preferred Date: </span>
-              <span>${new Date(bookingData.service?.date || bookingData.date).toLocaleDateString('en-US', { 
+              <span class="detail-label">Preferred Date:</span>
+              <span class="detail-value">${new Date(bookingData.service?.date || bookingData.date).toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 
@@ -1366,14 +1398,14 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
             </div>
             
             <div class="detail-row">
-              <span class="detail-label">Crew Size: </span>
-              <span>${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
+              <span class="detail-label">Crew Size:</span>
+              <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
             </div>
             
             ${(bookingData.yardAcreage) ? `
             <div class="detail-row">
-              <span class="detail-label">Approximate Yard Acreage: </span>
-              <span>${bookingData.yardAcreage}</span>
+              <span class="detail-label">Approximate Yard Acreage:</span>
+              <span class="detail-value">${bookingData.yardAcreage}</span>
             </div>
             ` : ''}
             
@@ -1386,20 +1418,20 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
             
             ${(bookingData.displayTime || bookingData.service?.displayTime) ? `
             <div class="detail-row">
-              <span class="detail-label">Scheduled Time: </span>
-              <span>${bookingData.displayTime || bookingData.service?.displayTime}</span>
+              <span class="detail-label">Scheduled Time:</span>
+              <span class="detail-value">${bookingData.displayTime || bookingData.service?.displayTime}</span>
             </div>
             ` : ''}
 
             <div class="detail-row">
-              <span class="detail-label">Rate: </span>
-              <span>${rateRange}</span>
+              <span class="detail-label">Rate:</span>
+              <span class="detail-value">${rateRange}</span>
             </div>
             
             ${(bookingData.notes || bookingData.service?.description) ? `
             <div class="detail-row">
-              <span class="detail-label">Additional Notes: </span>
-              <span>${bookingData.notes || bookingData.service?.description}</span>
+              <span class="detail-label">Additional Notes:</span>
+              <span class="detail-value">${bookingData.notes || bookingData.service?.description}</span>
             </div>
             ` : ''}
           </div>
@@ -1456,6 +1488,187 @@ async function sendEmailViaResend(emailData, apiKey) {
     console.error('❌ Error in sendEmailViaResend:', error);
     throw error;
   }
+}
+
+async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
+  const googleReviewUrl = "https://g.page/r/CdHSLMhhDOT7EBM/review";
+  const websiteUrl = "https://dcd-labor.vercel.app";
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 12px 12px 0 0; }
+        .content { padding: 30px 20px; background: #f8fffe; border: 1px solid #e5e7eb; }
+        .thank-you-section { background: white; padding: 25px; margin: 20px 0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .review-section { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; margin: 20px 0; border-radius: 12px; border: 2px solid #f59e0b; text-align: center; }
+        .review-button { display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 15px 0; transition: transform 0.2s ease; }
+        .review-button:hover { transform: translateY(-2px); text-decoration: none; color: white; }
+        .website-section { background: white; padding: 25px; margin: 20px 0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
+        .website-button { display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 10px 0; }
+        .website-button:hover { text-decoration: none; color: white; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; background: #f3f4f6; border-radius: 0 0 12px 12px; }
+        .star-rating { color: #f59e0b; font-size: 24px; margin: 10px 0; }
+        .highlight { color: #f59e0b; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🎉 Thank You for Choosing DCD Labor!</h1>
+          <p>Your landscaping service has been completed</p>
+        </div>
+        
+        <div class="content">
+          <div class="thank-you-section">
+            <h2>Hello ${bookingData.customer?.name || bookingData.name}!</h2>
+            <p>We hope you're absolutely <span class="highlight">thrilled</span> with the landscaping work we completed at your property. Your satisfaction is our top priority, and we truly appreciate the opportunity to serve you.</p>
+            <p>At DCD Labor, we take great pride in transforming outdoor spaces and delivering exceptional results for every client.</p>
+          </div>
+
+          <div class="review-section">
+            <h3>🌟 Love Your Results? Share Your Experience!</h3>
+            <div class="star-rating">⭐⭐⭐⭐⭐</div>
+            <p>If we did a great job and you're happy with our work, we'd be incredibly grateful if you could take a moment to leave us a <strong>Google review</strong>.</p>
+            <p>Your feedback helps other homeowners discover our services and motivates our team to continue delivering outstanding results!</p>
+            
+            <a href="${googleReviewUrl}" class="review-button" target="_blank">
+              🌟 Leave a Google Review
+            </a>
+            
+            <p><small>Click the button above to share your experience on Google Reviews</small></p>
+          </div>
+
+          <div class="website-section">
+            <h3>🏡 Need More Landscaping Services?</h3>
+            <p>We're here whenever you need us! Whether it's seasonal maintenance, additional landscaping projects, or emergency cleanup, DCD Labor is ready to help.</p>
+            
+            <a href="${websiteUrl}" class="website-button" target="_blank">
+              Book Your Next Service
+            </a>
+            
+            <p><strong>Recommend us to friends and neighbors!</strong> Word-of-mouth referrals are the best compliment we can receive.</p>
+          </div>
+
+          <div class="thank-you-section">
+            <h3>📞 Stay Connected</h3>
+            <p>Have questions or need to schedule another service?</p>
+            <p>
+              <strong>Email:</strong> ${dcdEmail}<br>
+              <strong>Phone:</strong> (908) 285-4587<br>
+              <strong>Website:</strong> <a href="${websiteUrl}" target="_blank">dcd-labor.vercel.app</a>
+            </p>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p>Thank you for being an amazing customer! 🌟</p>
+          <p><strong>DCD Labor - Your Premier Landscaping Partner</strong></p>
+          <p><small>This email was sent because you recently completed a service with DCD Labor.</small></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const emailData = {
+    from: dcdEmail,
+    to: [bookingData.customer?.email || bookingData.email],
+    subject: "🌟 Thank you for choosing DCD Labor - Share your experience!",
+    html: htmlContent
+  };
+
+  return await sendEmailViaResend(emailData, apiKey);
+}
+
+async function generateGoogleReviewEmailPreview(bookingData, dcdEmail) {
+  const googleReviewUrl = "https://g.page/r/CdHSLMhhDOT7EBM/review";
+  const websiteUrl = "https://dcd-labor.vercel.app";
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 30px 20px; text-align: center; border-radius: 12px 12px 0 0; }
+        .content { padding: 30px 20px; background: #f8fffe; border: 1px solid #e5e7eb; }
+        .thank-you-section { background: white; padding: 25px; margin: 20px 0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .review-section { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; margin: 20px 0; border-radius: 12px; border: 2px solid #f59e0b; text-align: center; }
+        .review-button { display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 15px 0; transition: transform 0.2s ease; }
+        .review-button:hover { transform: translateY(-2px); text-decoration: none; color: white; }
+        .website-section { background: white; padding: 25px; margin: 20px 0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
+        .website-button { display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 10px 0; }
+        .website-button:hover { text-decoration: none; color: white; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; background: #f3f4f6; border-radius: 0 0 12px 12px; }
+        .star-rating { color: #f59e0b; font-size: 24px; margin: 10px 0; }
+        .highlight { color: #f59e0b; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🎉 Thank You for Choosing DCD Labor!</h1>
+          <p>Your landscaping service has been completed</p>
+        </div>
+        
+        <div class="content">
+          <div class="thank-you-section">
+            <h2>Hello ${bookingData.customer?.name || bookingData.name}!</h2>
+            <p>We hope you're absolutely <span class="highlight">thrilled</span> with the landscaping work we completed at your property. Your satisfaction is our top priority, and we truly appreciate the opportunity to serve you.</p>
+            <p>At DCD Labor, we take great pride in transforming outdoor spaces and delivering exceptional results for every client.</p>
+          </div>
+
+          <div class="review-section">
+            <h3>🌟 Love Your Results? Share Your Experience!</h3>
+            <div class="star-rating">⭐⭐⭐⭐⭐</div>
+            <p>If we did a great job and you're happy with our work, we'd be incredibly grateful if you could take a moment to leave us a <strong>Google review</strong>.</p>
+            <p>Your feedback helps other homeowners discover our services and motivates our team to continue delivering outstanding results!</p>
+            
+            <a href="${googleReviewUrl}" class="review-button" target="_blank">
+              🌟 Leave a Google Review
+            </a>
+            
+            <p><small>Click the button above to share your experience on Google Reviews</small></p>
+          </div>
+
+          <div class="website-section">
+            <h3>🏡 Need More Landscaping Services?</h3>
+            <p>We're here whenever you need us! Whether it's seasonal maintenance, additional landscaping projects, or emergency cleanup, DCD Labor is ready to help.</p>
+            
+            <a href="${websiteUrl}" class="website-button" target="_blank">
+              Book Your Next Service
+            </a>
+            
+            <p><strong>Recommend us to friends and neighbors!</strong> Word-of-mouth referrals are the best compliment we can receive.</p>
+          </div>
+
+          <div class="thank-you-section">
+            <h3>📞 Stay Connected</h3>
+            <p>Have questions or need to schedule another service?</p>
+            <p>
+              <strong>Email:</strong> ${dcdEmail}<br>
+              <strong>Phone:</strong> (908) 285-4587<br>
+              <strong>Website:</strong> <a href="${websiteUrl}" target="_blank">dcd-labor.vercel.app</a>
+            </p>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p>Thank you for being an amazing customer! 🌟</p>
+          <p><strong>DCD Labor - Your Premier Landscaping Partner</strong></p>
+          <p><small>This email was sent because you recently completed a service with DCD Labor.</small></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 }
 
 // SQUARE PAYMENT ENDPOINTS
