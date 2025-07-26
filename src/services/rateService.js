@@ -2,9 +2,9 @@
 // In production, this would be replaced with actual API calls
 
 const DEFAULT_RATES = {
-  twoMan: 70,
-  threeMan: 100,
-  fourMan: 130
+  twoMan: 85,
+  threeMan: 117,
+  fourMan: 140
 };
 
 export const rateService = {
@@ -18,9 +18,9 @@ export const rateService = {
       if (parsed.twoMan && typeof parsed.twoMan === 'object' && parsed.twoMan.high) {
         console.log('Migrating old rate format to new single-rate format');
         const migratedRates = {
-          twoMan: parsed.twoMan.high || 70,
-          threeMan: parsed.threeMan.high || 100,
-          fourMan: parsed.fourMan.high || 130
+          twoMan: parsed.twoMan.high || 85,
+          threeMan: parsed.threeMan.high || 117,
+          fourMan: parsed.fourMan.high || 140
         };
         // Save the migrated format
         localStorage.setItem('teamRates', JSON.stringify(migratedRates));

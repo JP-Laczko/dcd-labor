@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import mongoService from '../services/mongoService';
 import emailService from '../services/emailService';
 import rateService from '../services/rateService';
+import timeSlotUtils from '../utils/timeSlotUtils';
 import '../styles/BookingModal.css';
 
 export default function BookingModal({ 
@@ -17,10 +18,12 @@ export default function BookingModal({
     email: '',
     phone: '',
     address: '',
+    serviceType: 'estimate',
     crewSize: '2',
     yardAcreage: '',
     services: [],
-    preferredHour: '',
+    timeSlot: '',
+    displayTime: '',
     notes: ''
   });
 
@@ -35,17 +38,58 @@ export default function BookingModal({
     crewRate: 0
   });
   const [mode, setMode] = useState('add'); // 'add', 'view', 'edit'
+  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
+  const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
 
-  const services = [
+  // Hourly Services (simple tasks)
+  const hourlyServices = [
     "Leaf Removal",
-    "Lawn Mowing", 
-    "Hedge Trimming",
-    "Garden Cleanup",
-    "Tree Pruning",
-    "Mulching",
-    "Weeding",
-    "Other"
+    "Weeding"
   ];
+
+  // Estimate Services (complex tasks requiring assessment)
+  const estimateServices = [
+    "Lawn Mowing",
+    "Hedge Trimming", 
+    "Tree Removal",
+    "Landscaping Design",
+    "Mulching",
+    "Garden Maintenance",
+    "Pressure Washing"
+  ];
+
+  // Load available time slots for a selected date
+  const loadTimeSlots = async (date) => {
+    setLoadingTimeSlots(true);
+    
+    try {
+      const dateString = date.toISOString().split('T')[0];
+      const availability = await mongoService.getAllCalendarAvailability();
+      
+      if (availability.success) {
+        const dayData = availability.availability.find(day => day.date === dateString);
+        
+        if (dayData && dayData.availability && dayData.availability.timeSlots) {
+          // For admin booking, show ALL time slots (admins can override availability)
+          const allSlots = dayData.availability.timeSlots
+            .sort((a, b) => a.time.localeCompare(b.time));
+          setAvailableTimeSlots(allSlots);
+        } else {
+          // Generate default time slots for the date based on business rules
+          const defaultSlots = timeSlotUtils.generateDefaultTimeSlots(date);
+          setAvailableTimeSlots(defaultSlots);
+        }
+      } else {
+        const defaultSlots = timeSlotUtils.generateDefaultTimeSlots(date);
+        setAvailableTimeSlots(defaultSlots);
+      }
+    } catch (error) {
+      console.error('Error loading time slots:', error);
+      setAvailableTimeSlots([]);
+    } finally {
+      setLoadingTimeSlots(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -93,10 +137,12 @@ export default function BookingModal({
           email: booking.customer?.email || '',
           phone: booking.customer?.phone || '',
           address: booking.customer?.address || booking.service?.address || '',
+          serviceType: booking.service?.serviceType || 'estimate',
           crewSize: booking.service?.crewSize?.toString() || '2',
           yardAcreage: booking.service?.yardAcreage || '',
           services: booking.service?.services || [],
-          preferredHour: booking.service?.preferredHour || '',
+          timeSlot: booking.service?.timeSlot || '',
+          displayTime: booking.service?.displayTime || '',
           notes: booking.service?.notes || ''
         });
       } else {
@@ -106,16 +152,23 @@ export default function BookingModal({
           email: '',
           phone: '',
           address: '',
+          serviceType: 'estimate',
           crewSize: '2',
           yardAcreage: '',
           services: [],
-          preferredHour: '',
+          timeSlot: '',
+          displayTime: '',
           notes: ''
         });
       }
       setErrors({});
+      
+      // Load time slots if we have a selected date
+      if (selectedDate) {
+        loadTimeSlots(selectedDate);
+      }
     }
-  }, [isOpen, booking]);
+  }, [isOpen, booking, selectedDate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -132,7 +185,26 @@ export default function BookingModal({
     }
   };
 
+  const handleServiceTypeChange = (serviceType) => {
+    setFormData(prev => ({
+      ...prev,
+      serviceType: serviceType,
+      services: [] // Clear services when switching type
+    }));
+    // Clear service errors
+    if (errors.services || errors.serviceType) {
+      setErrors(prev => ({
+        ...prev,
+        services: '',
+        serviceType: ''
+      }));
+    }
+  };
+
   const handleServiceChange = (service) => {
+    // Only allow changes if a service type is selected
+    if (!formData.serviceType) return;
+    
     setFormData(prev => ({
       ...prev,
       services: prev.services.includes(service)
@@ -148,7 +220,9 @@ export default function BookingModal({
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
     if (!formData.address.trim()) newErrors.address = 'Address is required';
+    if (!formData.serviceType) newErrors.serviceType = 'Please select service type';
     if (formData.services.length === 0) newErrors.services = 'Please select at least one service';
+    if (!formData.timeSlot) newErrors.timeSlot = 'Please select a time slot';
     
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -173,6 +247,7 @@ export default function BookingModal({
       const bookingData = {
         ...formData,
         date: selectedDate.toISOString().split('T')[0],
+        displayTime: formData.timeSlot ? timeSlotUtils.formatTimeForDisplay(formData.timeSlot) : '',
         crewSize: parseInt(formData.crewSize)
       };
 
@@ -322,6 +397,11 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
           month: 'long', 
           day: 'numeric' 
         })}
+        {formData.timeSlot && (
+          <span className="selected-time">
+            {' at '}{formData.displayTime || timeSlotUtils.formatTimeForDisplay(formData.timeSlot)}
+          </span>
+        )}
       </p>
 
       <div className="booking-details-view">
@@ -366,10 +446,16 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
               <label>Services:</label>
               <span>{formData.services.join(', ')}</span>
             </div>
-            {formData.preferredHour && (
+            {formData.timeSlot && (
               <div className="detail-item">
-                <label>Preferred Hour:</label>
-                <span>{formData.preferredHour.charAt(0).toUpperCase() + formData.preferredHour.slice(1).replace('-', ' ')}</span>
+                <label>Scheduled Time:</label>
+                <span>{formData.displayTime || timeSlotUtils.formatTimeForDisplay(formData.timeSlot)}</span>
+              </div>
+            )}
+            {formData.serviceType && (
+              <div className="detail-item">
+                <label>Service Type:</label>
+                <span>{formData.serviceType.charAt(0).toUpperCase() + formData.serviceType.slice(1)}</span>
               </div>
             )}
             {formData.notes && (
@@ -454,6 +540,11 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
                 month: 'long', 
                 day: 'numeric' 
               })}
+              {formData.timeSlot && (
+                <span className="selected-time">
+                  {' at '}{formData.displayTime || timeSlotUtils.formatTimeForDisplay(formData.timeSlot)}
+                </span>
+              )}
             </p>
 
             <form onSubmit={handleSubmit} className="booking-form">
@@ -540,40 +631,102 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
             </div>
 
             <div className="form-group">
-              <label htmlFor="preferredHour">Preferred Hour of Day</label>
-              <select
-                id="preferredHour"
-                name="preferredHour"
-                value={formData.preferredHour}
-                onChange={handleInputChange}
-              >
-                <option value="">No preference</option>
-                <option value="morning">Morning (8AM - 12PM)</option>
-                <option value="afternoon">Afternoon (12PM - 5PM)</option>
-                <option value="early-morning">Early Morning (7AM - 9AM)</option>
-                <option value="late-afternoon">Late Afternoon (3PM - 6PM)</option>
-              </select>
-              <small style={{color: '#666', fontSize: '12px', marginTop: '4px', display: 'block'}}>
-                Note: We will communicate to confirm the exact hour
-              </small>
+              <label htmlFor="timeSlot">Preferred Time *</label>
+              {selectedDate ? (
+                loadingTimeSlots ? (
+                  <div className="loading-time-slots">
+                    <p>Loading available times...</p>
+                  </div>
+                ) : availableTimeSlots.length > 0 ? (
+                  <select
+                    id="timeSlot"
+                    name="timeSlot"
+                    value={formData.timeSlot}
+                    onChange={(e) => {
+                      const timeSlot = e.target.value;
+                      setFormData(prev => ({
+                        ...prev,
+                        timeSlot: timeSlot,
+                        displayTime: timeSlot ? timeSlotUtils.formatTimeForDisplay(timeSlot) : ''
+                      }));
+                      if (errors.timeSlot) {
+                        setErrors(prev => ({ ...prev, timeSlot: '' }));
+                      }
+                    }}
+                    className={errors.timeSlot ? "error" : ""}
+                  >
+                    <option value="">Select a time</option>
+                    {availableTimeSlots.map(slot => (
+                      <option key={slot.time} value={slot.time}>
+                        {slot.displayTime}{!slot.isAvailable ? ' (Booked)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="no-time-slots">
+                    <p>No time slots available for this date</p>
+                  </div>
+                )
+              ) : (
+                <div className="select-date-first">
+                  <p>Selected date will be used to load available times</p>
+                </div>
+              )}
+              {errors.timeSlot && <span className="error-text">{errors.timeSlot}</span>}
             </div>
 
             <div className="form-group">
-              <label>Services Needed *</label>
-              <div className="services-grid">
-                {services.map(service => (
-                  <div key={service} className="service-item">
-                    <input
-                      type="checkbox"
-                      id={service}
-                      checked={formData.services.includes(service)}
-                      onChange={() => handleServiceChange(service)}
-                    />
-                    <label htmlFor={service}>{service}</label>
-                  </div>
-                ))}
+              <label>Service Type *</label>
+              <div className="service-type-selection">
+                <div 
+                  className={`service-type-card ${formData.serviceType === 'hourly' ? 'selected' : ''}`}
+                  onClick={() => handleServiceTypeChange('hourly')}
+                >
+                  <h4>Hourly Services</h4>
+                  <p>Simple tasks with set hourly rates</p>
+                  <ul>
+                    {hourlyServices.map((service, idx) => (
+                      <li key={idx}>{service}</li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div 
+                  className={`service-type-card ${formData.serviceType === 'estimate' ? 'selected' : ''}`}
+                  onClick={() => handleServiceTypeChange('estimate')}
+                >
+                  <h4>Estimate Services</h4>
+                  <p>Complex tasks requiring assessment</p>
+                  <ul>
+                    {estimateServices.slice(0, 3).map((service, idx) => (
+                      <li key={idx}>{service}</li>
+                    ))}
+                    {estimateServices.length > 3 && <li>+ {estimateServices.length - 3} more...</li>}
+                  </ul>
+                </div>
               </div>
-              {errors.services && <span className="error-text">{errors.services}</span>}
+              {errors.serviceType && <span className="error-text">{errors.serviceType}</span>}
+              
+              {/* Service Selection (shown only after type is selected) */}
+              {formData.serviceType && (
+                <div className="selected-services-section">
+                  <label>Select Services * (choose from {formData.serviceType} services)</label>
+                  <div className="services-grid">
+                    {(formData.serviceType === 'hourly' ? hourlyServices : estimateServices).map(service => (
+                      <div key={service} className="service-item">
+                        <input
+                          type="checkbox"
+                          id={service}
+                          checked={formData.services.includes(service)}
+                          onChange={() => handleServiceChange(service)}
+                        />
+                        <label htmlFor={service}>{service}</label>
+                      </div>
+                    ))}
+                  </div>
+                  {errors.services && <span className="error-text">{errors.services}</span>}
+                </div>
+              )}
             </div>
 
             <div className="form-group">

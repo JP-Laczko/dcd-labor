@@ -19,9 +19,9 @@ async function setupDevDatabase() {
     } else {
       // Create default rates
       const defaultRates = {
-        twoMan: 70,
-        threeMan: 100,
-        fourMan: 130
+        twoMan: 85,
+        threeMan: 117,
+        fourMan: 140
       };
       await devDb.collection('team_rates').replaceOne({}, defaultRates, { upsert: true });
       console.log('✅ Default team rates created');
@@ -37,9 +37,36 @@ async function setupDevDatabase() {
       date.setDate(today.getDate() + i);
       const dateString = date.toISOString().split('T')[0];
       
+      // Create time slots for each day
+      const timeSlots = [
+        {
+          time: "09:00",
+          displayTime: "9AM", 
+          isAvailable: true,
+          bookingId: null
+        },
+        {
+          time: "13:00",
+          displayTime: "1PM",
+          isAvailable: true, 
+          bookingId: null
+        }
+      ];
+      
+      // Every 3rd day make unavailable (no slots), others have 2 time slots
+      if (i % 3 === 0) {
+        timeSlots.forEach(slot => slot.isAvailable = false);
+      }
+      
       calendarEntries.push({
         date: dateString,
-        bookings: i % 3 === 0 ? 0 : 2 // Every 3rd day unavailable, others have 2 crews
+        bookings: i % 3 === 0 ? 0 : 2, // DEPRECATED: kept for backward compatibility
+        availability: {
+          maxBookings: 2, // DEPRECATED: derived from timeSlots.length
+          currentBookings: 0, // DEPRECATED: derived from occupied timeSlots
+          isAvailable: i % 3 !== 0, // true if any timeSlots are available
+          timeSlots: timeSlots
+        }
       });
     }
     

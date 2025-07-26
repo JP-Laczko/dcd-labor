@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import mongoService from '../services/mongoService';
 import emailService from '../services/emailService';
 import rateService from '../services/rateService';
+import timeSlotUtils from '../utils/timeSlotUtils';
 import SquarePayment from './SquarePayment';
 import { FaCalendarAlt, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
 import '../styles/BookingModal.css';
@@ -10,6 +11,7 @@ export default function PaymentBookingModal({
   isOpen, 
   onClose, 
   selectedDate, 
+  selectedTimeSlot = null,
   onBookingChange,
   preFilledData = null
 }) {
@@ -22,7 +24,8 @@ export default function PaymentBookingModal({
     crewSize: '2',
     yardAcreage: '',
     services: [],
-    preferredHour: '',
+    timeSlot: '',
+    displayTime: '',
     notes: ''
   });
 
@@ -32,15 +35,21 @@ export default function PaymentBookingModal({
   const [paymentResult, setPaymentResult] = useState(null);
   const [availabilityCheck, setAvailabilityCheck] = useState({ checking: false, available: true, error: null });
 
-  const services = [
+  // Hourly Services (simple tasks)
+  const hourlyServices = [
     "Leaf Removal",
-    "Lawn Mowing", 
-    "Hedge Trimming",
-    "Garden Cleanup",
-    "Tree Pruning",
+    "Weeding"
+  ];
+
+  // Estimate Services (complex tasks requiring assessment)
+  const estimateServices = [
+    "Lawn Mowing",
+    "Hedge Trimming", 
+    "Tree Removal",
+    "Landscaping Design",
     "Mulching",
-    "Weeding",
-    "Other"
+    "Garden Maintenance",
+    "Pressure Washing"
   ];
 
   const depositAmount = 80; // Fixed deposit amount
@@ -49,16 +58,24 @@ export default function PaymentBookingModal({
     if (isOpen) {
       // Reset state when modal opens
       setStep(preFilledData ? 2 : 1); // Skip to payment if pre-filled data provided
-      setFormData(preFilledData || {
+      // Set form data with time slot information
+      const baseFormData = {
         name: '',
         email: '',
         phone: '',
         address: '',
+        serviceType: '',
         crewSize: '2',
         yardAcreage: '',
         services: [],
-        preferredHour: '',
+        timeSlot: selectedTimeSlot || '',
+        displayTime: selectedTimeSlot ? timeSlotUtils.formatTimeForDisplay(selectedTimeSlot) : '',
         notes: ''
+      };
+      
+      setFormData({
+        ...baseFormData,
+        ...preFilledData
       });
       setErrors({});
       setPaymentResult(null);
@@ -175,7 +192,26 @@ export default function PaymentBookingModal({
     }
   };
 
+  const handleServiceTypeChange = (serviceType) => {
+    setFormData(prev => ({
+      ...prev,
+      serviceType: serviceType,
+      services: [] // Clear services when switching type
+    }));
+    // Clear service errors
+    if (errors.services || errors.serviceType) {
+      setErrors(prev => ({
+        ...prev,
+        services: '',
+        serviceType: ''
+      }));
+    }
+  };
+
   const handleServiceChange = (service) => {
+    // Only allow changes if a service type is selected
+    if (!formData.serviceType) return;
+    
     setFormData(prev => ({
       ...prev,
       services: prev.services.includes(service)
@@ -191,7 +227,9 @@ export default function PaymentBookingModal({
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
     if (!formData.address.trim()) newErrors.address = 'Address is required';
+    if (!formData.serviceType) newErrors.serviceType = 'Please select service type';
     if (formData.services.length === 0) newErrors.services = 'Please select at least one service';
+    if (!formData.timeSlot && !selectedTimeSlot) newErrors.timeSlot = 'Time slot is required';
     
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -212,6 +250,8 @@ export default function PaymentBookingModal({
         const bookingData = {
           ...formData,
           date: selectedDate.toISOString().split('T')[0],
+          timeSlot: formData.timeSlot || selectedTimeSlot,
+          displayTime: formData.displayTime || (selectedTimeSlot ? timeSlotUtils.formatTimeForDisplay(selectedTimeSlot) : ''),
           crewSize: parseInt(formData.crewSize)
         };
 
@@ -270,7 +310,6 @@ export default function PaymentBookingModal({
           crewSize: parseInt(formData.crewSize),
           yardAcreage: formData.yardAcreage,
           services: formData.services,
-          preferredHour: formData.preferredHour,
           notes: formData.notes,
           hourlyRate: rates[`${formData.crewSize}Man`] || 0
         }
@@ -381,7 +420,7 @@ export default function PaymentBookingModal({
       <div className="booking-date-header">
         <FaCalendarAlt className="calendar-icon" />
         <div>
-          <h3>Selected Date</h3>
+          <h3>Selected Date & Time</h3>
           <p className="selected-date">
             {selectedDate.toLocaleDateString('en-US', { 
               weekday: 'long', 
@@ -389,6 +428,11 @@ export default function PaymentBookingModal({
               month: 'long', 
               day: 'numeric' 
             })}
+            {(formData.displayTime || (selectedTimeSlot && timeSlotUtils.formatTimeForDisplay(selectedTimeSlot))) && (
+              <span className="selected-time">
+                {' at '}{formData.displayTime || timeSlotUtils.formatTimeForDisplay(selectedTimeSlot)}
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -476,41 +520,59 @@ export default function PaymentBookingModal({
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="preferredHour">Preferred Hour of Day</label>
-          <select
-            id="preferredHour"
-            name="preferredHour"
-            value={formData.preferredHour}
-            onChange={handleInputChange}
-          >
-            <option value="">No preference</option>
-            <option value="morning">Morning (8AM - 12PM)</option>
-            <option value="afternoon">Afternoon (12PM - 5PM)</option>
-            <option value="early-morning">Early Morning (7AM - 9AM)</option>
-            <option value="late-afternoon">Late Afternoon (3PM - 6PM)</option>
-          </select>
-          <small style={{color: '#666', fontSize: '12px', marginTop: '4px', display: 'block'}}>
-            Note: We will communicate to confirm the exact hour
-          </small>
-        </div>
 
         <div className="form-group">
-          <label>Services Needed *</label>
-          <div className="services-grid">
-            {services.map(service => (
-              <div key={service} className="service-item">
-                <input
-                  type="checkbox"
-                  id={service}
-                  checked={formData.services.includes(service)}
-                  onChange={() => handleServiceChange(service)}
-                />
-                <label htmlFor={service}>{service}</label>
-              </div>
-            ))}
+          <label>Service Type *</label>
+          <div className="service-type-selection">
+            <div 
+              className={`service-type-card ${formData.serviceType === 'hourly' ? 'selected' : ''}`}
+              onClick={() => handleServiceTypeChange('hourly')}
+            >
+              <h4>Hourly Services</h4>
+              <p>Simple tasks with set hourly rates</p>
+              <ul>
+                {hourlyServices.map((service, idx) => (
+                  <li key={idx}>{service}</li>
+                ))}
+              </ul>
+            </div>
+            
+            <div 
+              className={`service-type-card ${formData.serviceType === 'estimate' ? 'selected' : ''}`}
+              onClick={() => handleServiceTypeChange('estimate')}
+            >
+              <h4>Estimate Services</h4>
+              <p>Complex tasks requiring assessment</p>
+              <ul>
+                {estimateServices.slice(0, 3).map((service, idx) => (
+                  <li key={idx}>{service}</li>
+                ))}
+                {estimateServices.length > 3 && <li>+ {estimateServices.length - 3} more...</li>}
+              </ul>
+            </div>
           </div>
-          {errors.services && <span className="error-text">{errors.services}</span>}
+          {errors.serviceType && <span className="error-text">{errors.serviceType}</span>}
+          
+          {/* Service Selection (shown only after type is selected) */}
+          {formData.serviceType && (
+            <div className="selected-services-section">
+              <label>Select Services * (choose from {formData.serviceType} services)</label>
+              <div className="services-grid">
+                {(formData.serviceType === 'hourly' ? hourlyServices : estimateServices).map(service => (
+                  <div key={service} className="service-item">
+                    <input
+                      type="checkbox"
+                      id={service}
+                      checked={formData.services.includes(service)}
+                      onChange={() => handleServiceChange(service)}
+                    />
+                    <label htmlFor={service}>{service}</label>
+                  </div>
+                ))}
+              </div>
+              {errors.services && <span className="error-text">{errors.services}</span>}
+            </div>
+          )}
         </div>
 
         <div className="form-group">

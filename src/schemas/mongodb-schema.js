@@ -17,11 +17,12 @@ export const bookingSchema = {
   // Service Details
   service: {
     date: "Date", // Required, preferred service date
+    timeSlot: "String", // Required, time slot in 24hr format: "09:00", "13:00"
+    displayTime: "String", // Display format: "9AM", "1PM"
     crewSize: "Number", // Required, 2, 3, or 4 man crew
     hourlyRate: "Number", // Required, rate at time of booking
     yardAcreage: "String", // Required, yard size description
     services: ["String"], // Required, array of requested services
-    preferredHour: "String", // Optional, preferred time of day
     notes: "String", // Optional, additional customer notes
     estimatedHours: "Number", // Optional, estimated job duration
     totalCost: "Number" // Optional, calculated total cost
@@ -74,16 +75,17 @@ export const calendarAvailabilitySchema = {
   
   // Availability Configuration
   availability: {
-    maxBookings: "Number", // Maximum bookings allowed for this date
-    currentBookings: "Number", // Current number of bookings
-    isAvailable: "Boolean", // Calculated field: currentBookings < maxBookings
+    maxBookings: "Number", // DEPRECATED: Use timeSlots instead
+    currentBookings: "Number", // DEPRECATED: Use timeSlots instead
+    isAvailable: "Boolean", // Calculated field: any available time slots
     
-    // Crew Availability
-    crewAvailability: {
-      twoMan: "Number", // Available 2-man crews
-      threeMan: "Number", // Available 3-man crews
-      fourMan: "Number" // Available 4-man crews
-    }
+    // Time Slot Availability (replaces crew system)
+    timeSlots: [{
+      time: "String", // 24hr format: "09:00", "13:00", "15:00"
+      displayTime: "String", // Display format: "9AM", "1PM", "3PM"
+      isAvailable: "Boolean", // true if slot is open for booking
+      bookingId: "ObjectId" // reference to booking if occupied, null if available
+    }]
   },
   
   // Business Rules
@@ -207,14 +209,15 @@ export const sampleData = {
     },
     service: {
       date: new Date("2024-03-15"),
+      timeSlot: "09:00",
+      displayTime: "9AM",
       crewSize: 2,
-      hourlyRate: 70,
+      hourlyRate: 85,
       yardAcreage: "0.5 acres",
       services: ["Leaf Removal", "Lawn Mowing", "Hedge Trimming"],
-      preferredHour: "morning",
       notes: "Please avoid the flower beds near the front porch",
       estimatedHours: 4,
-      totalCost: 280
+      totalCost: 340
     },
     status: {
       current: "pending",
@@ -225,9 +228,9 @@ export const sampleData = {
       }]
     },
     payment: {
-      depositAmount: 140,
+      depositAmount: 170,
       depositPaid: false,
-      finalAmount: 140,
+      finalAmount: 170,
       finalPaid: false,
       paymentMethod: "credit_card"
     },
@@ -249,14 +252,23 @@ export const sampleData = {
     date: new Date("2024-03-15"),
     dateString: "2024-03-15",
     availability: {
-      maxBookings: 1,
-      currentBookings: 0,
-      isAvailable: true,
-      crewAvailability: {
-        twoMan: 1,
-        threeMan: 1,
-        fourMan: 1
-      }
+      maxBookings: 2, // DEPRECATED: derived from timeSlots.length
+      currentBookings: 0, // DEPRECATED: derived from occupied timeSlots
+      isAvailable: true, // true if any timeSlots are available
+      timeSlots: [
+        {
+          time: "09:00",
+          displayTime: "9AM",
+          isAvailable: true,
+          bookingId: null
+        },
+        {
+          time: "13:00", 
+          displayTime: "1PM",
+          isAvailable: true,
+          bookingId: null
+        }
+      ]
     },
     businessRules: {
       isDayOff: false,
@@ -276,9 +288,9 @@ export const sampleData = {
   // Sample team rates
   sampleRates: {
     rates: {
-      twoMan: 70,
-      threeMan: 100,
-      fourMan: 130
+      twoMan: 85,
+      threeMan: 117,
+      fourMan: 140
     },
     version: 1,
     effectiveDate: new Date(),

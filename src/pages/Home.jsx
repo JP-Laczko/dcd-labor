@@ -1,6 +1,6 @@
 import Navbar from "../components/Navbar";
 import HeroCarousel from "../components/HeroCarousel";
-import CalendarSection from "../components/CalendarSection";
+import CalendarSectionTimeSlots from "../components/CalendarSectionTimeSlots";
 import BookingSection from "../components/BookingSection";
 import TestimonialsSection from "../components/TestimonialsSection";
 import Footer from "../components/Footer";
@@ -10,7 +10,7 @@ export default function Home() {
     <div>
       <Navbar />
       <HeroCarousel />
-      <CalendarSection />
+      <CalendarSectionTimeSlots />
       <BookingSection />
       <TestimonialsSection />
       <Footer />

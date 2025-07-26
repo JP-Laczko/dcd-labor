@@ -233,11 +233,13 @@ class MongoService {
         },
         service: {
           date: new Date(bookingData.date),
+          timeSlot: bookingData.timeSlot || '',
+          displayTime: bookingData.displayTime || '',
+          serviceType: bookingData.serviceType || 'estimate', // 'hourly' or 'estimate'
           crewSize: parseInt(bookingData.crewSize),
           hourlyRate: currentRate,
           yardAcreage: bookingData.yardAcreage,
           services: bookingData.services,
-          preferredHour: bookingData.preferredHour || '',
           notes: bookingData.notes || '',
           estimatedHours: null,
           totalCost: null
@@ -298,7 +300,10 @@ class MongoService {
         const result = await response.json();
         console.log('MongoDB save result:', result);
         
-        // NOTE: DO NOT update calendar availability here - that's only set by admin via Edit Crews
+        // Update calendar time slot to mark it as booked
+        if (booking.service.timeSlot) {
+          await this.markTimeSlotAsBooked(bookingData.date, booking.service.timeSlot, booking.bookingId);
+        }
         
         return { success: true, booking: result };
       } else {
@@ -307,7 +312,10 @@ class MongoService {
         bookings.push(booking);
         localStorage.setItem('dcd_bookings', JSON.stringify(bookings));
         
-        // NOTE: DO NOT update calendar availability here - that's only set by admin via Edit Crews
+        // Update calendar time slot to mark it as booked (localStorage fallback)
+        if (booking.service.timeSlot) {
+          await this.markTimeSlotAsBooked(bookingData.date, booking.service.timeSlot, booking.bookingId);
+        }
         
         return { success: true, booking };
       }
@@ -802,6 +810,174 @@ class MongoService {
       }
     } catch (error) {
       console.error('Error deleting booking:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Update calendar time slots (replaces crew management)
+  async updateCalendarTimeSlots(date, timeSlots) {
+    try {
+      const dateString = new Date(date).toISOString().split('T')[0];
+      
+      if (this.isConnected) {
+        console.log('🗄️ Updating calendar time slots in MongoDB:', dateString, timeSlots);
+        try {
+          const requestBody = { 
+            date: dateString,
+            timeSlots: timeSlots
+          };
+          
+          const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/calendar-time-slots`;
+          const response = await fetch(apiUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log('🗄️ MongoDB time slots update result:', result);
+          return { success: true, result };
+        } catch (fetchError) {
+          console.warn('🟡 MongoDB time slots update failed, using localStorage fallback:', fetchError);
+          return this.updateCalendarTimeSlotsLocal(dateString, timeSlots);
+        }
+      } else {
+        return this.updateCalendarTimeSlotsLocal(dateString, timeSlots);
+      }
+    } catch (error) {
+      console.error('Error updating calendar time slots:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Local storage fallback for time slots
+  updateCalendarTimeSlotsLocal(dateString, timeSlots) {
+    try {
+      console.log('🗄️ Updating localStorage calendar time slots');
+      let calendar = this.getLocalCalendar();
+      
+      // Ensure calendar is in array format
+      if (!Array.isArray(calendar)) {
+        calendar = [];
+      }
+
+      // Find or create the date entry
+      let dateEntry = calendar.find(entry => entry.date === dateString);
+      if (!dateEntry) {
+        dateEntry = {
+          date: dateString,
+          availability: {
+            maxBookings: timeSlots.length, // DEPRECATED but kept for compatibility
+            currentBookings: 0, // DEPRECATED but kept for compatibility
+            isAvailable: timeSlots.some(slot => slot.isAvailable),
+            timeSlots: timeSlots
+          },
+          businessRules: {
+            isDayOff: false,
+            isBlocked: false
+          },
+          bookings: [],
+          metadata: {
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastModifiedBy: 'admin'
+          }
+        };
+        calendar.push(dateEntry);
+      } else {
+        // Update existing entry
+        dateEntry.availability.timeSlots = timeSlots;
+        dateEntry.availability.isAvailable = timeSlots.some(slot => slot.isAvailable);
+        dateEntry.availability.maxBookings = timeSlots.length; // DEPRECATED but kept for compatibility
+        dateEntry.metadata.updatedAt = new Date();
+        dateEntry.metadata.lastModifiedBy = 'admin';
+      }
+
+      localStorage.setItem('dcd_calendar', JSON.stringify(calendar));
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating local calendar time slots:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Mark a specific time slot as booked
+  async markTimeSlotAsBooked(date, timeSlot, bookingId) {
+    try {
+      const dateString = new Date(date).toISOString().split('T')[0];
+      
+      if (this.isConnected) {
+        // Update via API
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/calendar-mark-slot-booked`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            date: dateString,
+            timeSlot: timeSlot,
+            bookingId: bookingId
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('🗄️ Time slot marked as booked:', result);
+        return { success: true, result };
+      } else {
+        // Local storage fallback
+        return this.markTimeSlotAsBookedLocal(dateString, timeSlot, bookingId);
+      }
+    } catch (error) {
+      console.error('Error marking time slot as booked:', error);
+      // Continue without failing the booking creation
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Local storage fallback for marking time slot as booked
+  markTimeSlotAsBookedLocal(dateString, timeSlot, bookingId) {
+    try {
+      let calendar = this.getLocalCalendar();
+      
+      if (!Array.isArray(calendar)) {
+        calendar = [];
+      }
+
+      // Find the date entry
+      let dateEntry = calendar.find(entry => entry.date === dateString);
+      if (dateEntry && dateEntry.availability && dateEntry.availability.timeSlots) {
+        // Mark the specific time slot as booked
+        dateEntry.availability.timeSlots = dateEntry.availability.timeSlots.map(slot => {
+          if (slot.time === timeSlot) {
+            return {
+              ...slot,
+              isAvailable: false,
+              bookingId: bookingId
+            };
+          }
+          return slot;
+        });
+
+        // Update availability flags
+        dateEntry.availability.isAvailable = dateEntry.availability.timeSlots.some(slot => slot.isAvailable);
+        dateEntry.availability.currentBookings = dateEntry.availability.timeSlots.filter(slot => !slot.isAvailable).length;
+        dateEntry.metadata.updatedAt = new Date();
+      }
+
+      localStorage.setItem('dcd_calendar', JSON.stringify(calendar));
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating local calendar time slot:', error);
       return { success: false, error: error.message };
     }
   }

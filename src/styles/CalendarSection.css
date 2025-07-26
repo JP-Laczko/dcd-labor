@@ -738,3 +738,134 @@
   line-height: 1;
   font-weight: 700;
 }
+
+/* Time Slots Calendar Styling */
+.time-slots-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0;
+}
+
+.time-slot-preview {
+  font-size: 0.6rem;
+  background-color: rgba(34, 197, 94, 0.8);
+  color: white;
+  padding: 1px 3px;
+  border-radius: 2px;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+/* Time Slot Selector Modal */
+.time-slot-selector {
+  max-width: 400px;
+  width: 90%;
+}
+
+.time-slot-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.time-slot-option {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 16px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-slot-option:hover {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.time-display {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.time-24hr {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* Mobile responsive time slots */
+@media (max-width: 768px) {
+  .time-slot-preview {
+    font-size: 0.55rem;
+    padding: 1px 2px;
+  }
+  
+  .time-slots-preview {
+    gap: 0.5px;
+  }
+  
+  .time-slot-selector {
+    max-width: 95vw;
+    margin: 10px;
+  }
+  
+  .time-slot-selector .modal-header {
+    padding: 15px 20px;
+  }
+  
+  .time-slot-selector .modal-header h3 {
+    font-size: 1.1rem;
+  }
+  
+  .time-slot-selector .modal-body {
+    padding: 15px 20px;
+  }
+  
+  .time-slot-options {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 15px 0;
+  }
+  
+  .time-slot-option {
+    padding: 14px 12px;
+    border-radius: 6px;
+  }
+  
+  .time-display {
+    font-size: 1.1rem;
+  }
+  
+  .time-24hr {
+    font-size: 0.75rem;
+  }
+  
+  /* Ensure modal overlay works on mobile */
+  .modal-overlay {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  /* Better touch targets for mobile */
+  .calendar-day.clickable {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(34, 197, 94, 0.3);
+  }
+  
+  /* Ensure time slot previews are visible on mobile */
+  .time-slot-preview {
+    min-height: 8px;
+    display: block;
+  }
+}

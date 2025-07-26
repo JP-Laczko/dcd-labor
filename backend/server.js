@@ -131,6 +131,66 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// UTILITY FUNCTIONS
+
+// Generate default time slots for a given date (matches frontend logic)
+function generateDefaultTimeSlots(date) {
+  const august25 = new Date('2024-08-25');
+  const isAfterAugust25 = date >= august25;
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+  
+  let slots = [];
+  
+  if (isAfterAugust25) {
+    // August 25+ rules: weekdays 3PM only, weekends 9AM and 1PM
+    if (isWeekend) {
+      slots = [
+        {
+          time: "09:00",
+          displayTime: "9AM",
+          isAvailable: true,
+          bookingId: null
+        },
+        {
+          time: "13:00", 
+          displayTime: "1PM",
+          isAvailable: true,
+          bookingId: null
+        }
+      ];
+    } else {
+      // Weekday - only 3PM
+      slots = [
+        {
+          time: "15:00",
+          displayTime: "3PM", 
+          isAvailable: true,
+          bookingId: null
+        }
+      ];
+    }
+  } else {
+    // Before August 25: default 9AM and 1PM for all days
+    slots = [
+      {
+        time: "09:00",
+        displayTime: "9AM",
+        isAvailable: true,
+        bookingId: null
+      },
+      {
+        time: "13:00",
+        displayTime: "1PM", 
+        isAvailable: true,
+        bookingId: null
+      }
+    ];
+  }
+  
+  return slots;
+}
+
 // CALENDAR AVAILABILITY ENDPOINTS
 
 // GET /api/calendar-availability - Get all calendar availability
@@ -146,13 +206,68 @@ app.get('/api/calendar-availability', async (req, res) => {
     const collection = db.collection('calendar_availability');
     const documents = await collection.find({}).toArray();
     
-    console.log('📅 Calendar availability from MongoDB:', documents);
+    console.log('📅 Calendar availability from MongoDB:', documents.length, 'documents');
     
-    // Transform MongoDB documents to expected format
-    const availability = documents.map(doc => ({
-      date: doc.date,
-      bookings: doc.bookings || 0
-    }));
+    // Transform MongoDB documents to expected format (support both old and new schema)
+    const availability = documents.map(doc => {
+      // Handle both old format {date, bookings} and new format {date, availability: {...}}
+      if (doc.availability) {
+        // New format - document has availability.timeSlots structure
+        // Respect admin's explicit configuration - don't auto-generate if timeSlots exists (even if empty)
+        return {
+          date: doc.date,
+          bookings: doc.availability.maxBookings || 0, // DEPRECATED: kept for backward compatibility
+          availability: doc.availability
+        };
+      } else {
+        // Old format - document only has {date, bookings}
+        // Generate proper default time slots based on date
+        const date = new Date(doc.date);
+        const defaultTimeSlots = generateDefaultTimeSlots(date);
+        
+        return {
+          date: doc.date,
+          bookings: doc.bookings || 0, // DEPRECATED: kept for backward compatibility  
+          availability: {
+            maxBookings: doc.bookings || 0,
+            currentBookings: 0,
+            isAvailable: (doc.bookings || 0) > 0,
+            timeSlots: defaultTimeSlots
+          }
+        };
+      }
+    });
+    
+    // Now fetch all bookings and mark corresponding time slots as unavailable
+    try {
+      const bookingsCollection = db.collection('bookings');
+      const bookings = await bookingsCollection.find({}).toArray();
+      
+      // Process bookings to mark time slots as unavailable
+      bookings.forEach(booking => {
+        if (booking.service && booking.service.timeSlot) {
+          const bookingDate = new Date(booking.service.date).toISOString().split('T')[0];
+          const bookingTimeSlot = booking.service.timeSlot;
+          
+          // Find the corresponding availability entry
+          const availabilityEntry = availability.find(entry => entry.date === bookingDate);
+          if (availabilityEntry && availabilityEntry.availability && availabilityEntry.availability.timeSlots) {
+            // Mark the time slot as unavailable
+            availabilityEntry.availability.timeSlots.forEach(slot => {
+              if (slot.time === bookingTimeSlot) {
+                slot.isAvailable = false;
+                slot.bookingId = booking.bookingId || booking._id;
+              }
+            });
+          }
+        }
+      });
+      
+      console.log('📅 Processed', bookings.length, 'bookings to update time slot availability');
+    } catch (bookingError) {
+      console.error('⚠️ Error processing bookings for time slot availability:', bookingError);
+      // Continue without booking integration if it fails
+    }
     
     res.json(availability);
   } catch (error) {
@@ -205,6 +320,141 @@ app.put('/api/calendar-availability', async (req, res) => {
   } catch (error) {
     console.error('❌ Error updating calendar availability:', error);
     res.status(500).json({ error: 'Failed to update calendar availability' });
+  }
+});
+
+// PUT /api/calendar-time-slots - Update time slots for a specific date (NEW TIME SLOT SYSTEM)
+app.put('/api/calendar-time-slots', async (req, res) => {
+  try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
+    
+    const { date, timeSlots } = req.body;
+    console.log(`📅 PUT /api/calendar-time-slots - Date: ${date}, TimeSlots:`, timeSlots);
+    
+    if (!date || !timeSlots || !Array.isArray(timeSlots)) {
+      return res.status(400).json({ error: 'date and timeSlots array are required' });
+    }
+    
+    const collection = db.collection('calendar_availability');
+    
+    // Find existing document or create new one
+    const existingDoc = await collection.findOne({ date });
+    
+    const updateDoc = {
+      date,
+      availability: {
+        maxBookings: timeSlots.length, // DEPRECATED but kept for compatibility
+        currentBookings: timeSlots.filter(slot => !slot.isAvailable).length,
+        isAvailable: timeSlots.some(slot => slot.isAvailable),
+        timeSlots: timeSlots
+      },
+      businessRules: existingDoc?.businessRules || {
+        isDayOff: false,
+        isBlocked: false,
+        blockReason: null,
+        weather: null,
+        specialNotes: null
+      },
+      bookings: existingDoc?.bookings || [],
+      metadata: {
+        ...existingDoc?.metadata,
+        updatedAt: new Date(),
+        lastModifiedBy: 'admin'
+      }
+    };
+    
+    // If document doesn't exist, add creation metadata
+    if (!existingDoc) {
+      updateDoc.metadata.createdAt = new Date();
+    }
+    
+    const result = await collection.replaceOne(
+      { date },
+      updateDoc,
+      { upsert: true }
+    );
+    
+    console.log(`📅 Time slots updated for ${date}: ${result.modifiedCount} modified, ${result.upsertedCount} inserted`);
+    
+    res.json({ 
+      success: true, 
+      message: `Time slots updated for ${date}`,
+      timeSlots: timeSlots
+    });
+    
+  } catch (error) {
+    console.error('❌ Error updating calendar time slots:', error);
+    res.status(500).json({ error: 'Failed to update calendar time slots' });
+  }
+});
+
+// PUT /api/calendar-mark-slot-booked - Mark a specific time slot as booked
+app.put('/api/calendar-mark-slot-booked', async (req, res) => {
+  try {
+    // Ensure database connection
+    if (!db) {
+      await connectToMongo();
+    }
+    
+    const { date, timeSlot, bookingId } = req.body;
+    console.log(`📅 PUT /api/calendar-mark-slot-booked - Date: ${date}, TimeSlot: ${timeSlot}, BookingId: ${bookingId}`);
+    
+    if (!date || !timeSlot || !bookingId) {
+      return res.status(400).json({ error: 'date, timeSlot, and bookingId are required' });
+    }
+    
+    const collection = db.collection('calendar_availability');
+    
+    // Find the document for this date
+    const existingDoc = await collection.findOne({ date });
+    
+    if (!existingDoc || !existingDoc.availability || !existingDoc.availability.timeSlots) {
+      return res.status(404).json({ error: 'No time slots found for this date' });
+    }
+    
+    // Update the specific time slot
+    const updatedTimeSlots = existingDoc.availability.timeSlots.map(slot => {
+      if (slot.time === timeSlot) {
+        return {
+          ...slot,
+          isAvailable: false,
+          bookingId: bookingId
+        };
+      }
+      return slot;
+    });
+    
+    // Update the document
+    const updateDoc = {
+      ...existingDoc,
+      availability: {
+        ...existingDoc.availability,
+        timeSlots: updatedTimeSlots,
+        currentBookings: updatedTimeSlots.filter(slot => !slot.isAvailable).length,
+        isAvailable: updatedTimeSlots.some(slot => slot.isAvailable)
+      },
+      metadata: {
+        ...existingDoc.metadata,
+        updatedAt: new Date(),
+        lastModifiedBy: 'booking-system'
+      }
+    };
+    
+    const result = await collection.replaceOne({ date }, updateDoc);
+    
+    console.log(`📅 Time slot marked as booked for ${date}: ${result.modifiedCount} modified`);
+    res.json({ 
+      success: true, 
+      message: `Time slot ${timeSlot} marked as booked for ${date}`,
+      timeSlots: updatedTimeSlots
+    });
+    
+  } catch (error) {
+    console.error('❌ Error marking time slot as booked:', error);
+    res.status(500).json({ error: 'Failed to mark time slot as booked' });
   }
 });
 
@@ -379,7 +629,9 @@ app.put('/api/bookings/:id', async (req, res) => {
         crewSize: parseInt(bookingData.crewSize),
         yardAcreage: bookingData.yardAcreage,
         services: bookingData.services,
-        preferredHour: bookingData.preferredHour || '',
+        timeSlot: bookingData.timeSlot || '',
+        displayTime: bookingData.displayTime || '',
+        serviceType: bookingData.serviceType || 'estimate',
         notes: bookingData.notes || ''
       },
       updatedAt: new Date()
@@ -553,7 +805,9 @@ app.get('/api/email-preview', async (req, res) => {
       },
       yardAcreage: '0.5 acres',
       services: ['Lawn Mowing', 'Leaf Removal', 'Hedge Trimming'],
-      preferredHour: 'morning',
+      timeSlot: '09:00',
+      displayTime: '9AM',
+      serviceType: 'estimate',
       notes: 'Please be careful around the flower beds near the front entrance.'
     };
 
@@ -662,10 +916,10 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
             </div>
             ` : ''}
             
-            ${(bookingData.preferredHour || bookingData.service?.preferredHour) ? `
+            ${(bookingData.displayTime || bookingData.service?.displayTime) ? `
             <div class="detail-row">
-              <span class="detail-label">Preferred Hour: </span>
-              <span>${(bookingData.preferredHour || bookingData.service?.preferredHour).charAt(0).toUpperCase() + (bookingData.preferredHour || bookingData.service?.preferredHour).slice(1).replace('-', ' ')} (subject to confirmation)</span>
+              <span class="detail-label">Scheduled Time: </span>
+              <span>${bookingData.displayTime || bookingData.service?.displayTime}</span>
             </div>
             ` : ''}
 
@@ -802,10 +1056,10 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
             </div>
             ` : ''}
             
-            ${(bookingData.preferredHour || bookingData.service?.preferredHour) ? `
+            ${(bookingData.displayTime || bookingData.service?.displayTime) ? `
             <div class="detail-row">
-              <span class="detail-label">Preferred Hour: </span>
-              <span>${(bookingData.preferredHour || bookingData.service?.preferredHour).charAt(0).toUpperCase() + (bookingData.preferredHour || bookingData.service?.preferredHour).slice(1).replace('-', ' ')} (subject to confirmation)</span>
+              <span class="detail-label">Scheduled Time: </span>
+              <span>${bookingData.displayTime || bookingData.service?.displayTime}</span>
             </div>
             ` : ''}
 
@@ -979,10 +1233,10 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
             </div>
             ` : ''}
             
-            ${(bookingData.preferredHour || bookingData.service?.preferredHour) ? `
+            ${(bookingData.displayTime || bookingData.service?.displayTime) ? `
             <div class="detail-row">
-              <span class="detail-label">Preferred Hour: </span>
-              <span>${(bookingData.preferredHour || bookingData.service?.preferredHour).charAt(0).toUpperCase() + (bookingData.preferredHour || bookingData.service?.preferredHour).slice(1).replace('-', ' ')} (subject to confirmation)</span>
+              <span class="detail-label">Scheduled Time: </span>
+              <span>${bookingData.displayTime || bookingData.service?.displayTime}</span>
             </div>
             ` : ''}
 
@@ -1130,10 +1384,10 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
             </div>
             ` : ''}
             
-            ${(bookingData.preferredHour || bookingData.service?.preferredHour) ? `
+            ${(bookingData.displayTime || bookingData.service?.displayTime) ? `
             <div class="detail-row">
-              <span class="detail-label">Preferred Hour: </span>
-              <span>${(bookingData.preferredHour || bookingData.service?.preferredHour).charAt(0).toUpperCase() + (bookingData.preferredHour || bookingData.service?.preferredHour).slice(1).replace('-', ' ')} (subject to confirmation)</span>
+              <span class="detail-label">Scheduled Time: </span>
+              <span>${bookingData.displayTime || bookingData.service?.displayTime}</span>
             </div>
             ` : ''}
 

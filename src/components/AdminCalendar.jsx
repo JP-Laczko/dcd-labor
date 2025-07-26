@@ -3,6 +3,7 @@ import "../styles/Admin.css";
 import mongoService from "../services/mongoService";
 import BookingModal from "./BookingModal";
 import SquareFinalPayment from "./SquareFinalPayment";
+import timeSlotUtils from "../utils/timeSlotUtils";
 
 export default function AdminCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -11,9 +12,9 @@ export default function AdminCalendar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [showCrewModal, setShowCrewModal] = useState(false);
-  const [selectedCrewDate, setSelectedCrewDate] = useState(null);
-  const [crewCount, setCrewCount] = useState(0);
+  const [showTimeSlotsModal, setShowTimeSlotsModal] = useState(false);
+  const [selectedTimeSlotsDate, setSelectedTimeSlotsDate] = useState(null);
+  const [timeSlots, setTimeSlots] = useState([]);
   const [expandedBooking, setExpandedBooking] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showFinalPaymentModal, setShowFinalPaymentModal] = useState(false);
@@ -49,17 +50,17 @@ export default function AdminCalendar() {
       } else {
         // Fallback to default rates
         setRates({
-          twoMan: 70,
-          threeMan: 100,
-          fourMan: 130
+          twoMan: 85,
+          threeMan: 117,
+          fourMan: 140
         });
       }
     } catch (error) {
       console.error('Error loading rates:', error);
       setRates({
-        twoMan: 70,
-        threeMan: 100,
-        fourMan: 130
+        twoMan: 85,
+        threeMan: 117,
+        fourMan: 140
       });
     }
   };

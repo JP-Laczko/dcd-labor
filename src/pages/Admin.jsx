@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import '../styles/Admin.css';
 import rateService from '../services/rateService';
 import mongoService from '../services/mongoService';
-import AdminCalendar from '../components/AdminCalendar';
+import AdminCalendarTimeSlots from '../components/AdminCalendarTimeSlots';
+import testBookingCommands from '../utils/testBookingCommands';
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rates, setRates] = useState({});
+  const [testBookingStatus, setTestBookingStatus] = useState('');
 
   useEffect(() => {
     const authStatus = localStorage.getItem('adminAuth');
@@ -126,6 +128,60 @@ export default function Admin() {
     }
   };
 
+  // Test Booking Command Handlers
+  const executeTestBookingCommand = async (commandFunction, commandName) => {
+    setTestBookingStatus(`Running ${commandName}...`);
+    try {
+      const result = await commandFunction();
+      if (result.success) {
+        setTestBookingStatus(`✅ ${commandName} completed successfully!`);
+        setTimeout(() => setTestBookingStatus(''), 3000);
+      } else {
+        setTestBookingStatus(`❌ ${commandName} failed: ${result.error}`);
+        setTimeout(() => setTestBookingStatus(''), 5000);
+      }
+      return result;
+    } catch (error) {
+      setTestBookingStatus(`❌ ${commandName} error: ${error.message}`);
+      setTimeout(() => setTestBookingStatus(''), 5000);
+      console.error('Test booking command error:', error);
+    }
+  };
+
+  const handleTest2ManHourly = () => executeTestBookingCommand(
+    testBookingCommands.createTest2ManHourlyBooking,
+    '2-Man Hourly Booking'
+  );
+
+  const handleTest3ManEstimate = () => executeTestBookingCommand(
+    testBookingCommands.createTest3ManEstimateBooking,
+    '3-Man Estimate Booking'
+  );
+
+  const handleTest4ManHourly = () => executeTestBookingCommand(
+    testBookingCommands.createTest4ManHourlyBooking,
+    '4-Man Hourly Booking'
+  );
+
+  const handleBulkTestBookings = () => executeTestBookingCommand(
+    () => testBookingCommands.createBulkTestBookings(5),
+    'Bulk Test Bookings (5)'
+  );
+
+  const handleNextWeekBookings = () => executeTestBookingCommand(
+    testBookingCommands.createTestBookingsForNextWeek,
+    'Next Week Test Bookings'
+  );
+
+  const handleClearTestBookings = () => {
+    if (confirm('This will clear all test bookings from localStorage only. MongoDB bookings need to be deleted manually. Continue?')) {
+      executeTestBookingCommand(
+        testBookingCommands.clearAllTestBookings,
+        'Clear Test Bookings'
+      );
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="admin-container">
@@ -167,7 +223,7 @@ export default function Admin() {
       </div>
 
       <div className="admin-content">
-        <AdminCalendar />
+        <AdminCalendarTimeSlots />
 
         <div className="rates-section">
           <h2>Team Rates</h2>
@@ -215,6 +271,70 @@ export default function Admin() {
             </div>
           </div>
           <button onClick={saveRates} className="save-rates-btn">Save Rates</button>
+        </div>
+
+        {/* Test Booking Commands Section */}
+        <div className="test-booking-section">
+          <h2>Test Booking Commands</h2>
+          <p>Create test bookings to verify the system is working properly. These commands integrate with your booking system and demonstrate all functionality.</p>
+          
+          {testBookingStatus && (
+            <div className="test-booking-status">
+              {testBookingStatus}
+            </div>
+          )}
+          
+          <div className="test-commands-grid">
+            <div className="test-command-card">
+              <h3>Individual Test Bookings</h3>
+              <p>Create single test bookings with different crew sizes and service types</p>
+              <div className="test-command-buttons">
+                <button onClick={handleTest2ManHourly} className="test-cmd-btn">
+                  🧪 2-Man Crew (Hourly)
+                </button>
+                <button onClick={handleTest3ManEstimate} className="test-cmd-btn">
+                  🧪 3-Man Crew (Estimate)
+                </button>
+                <button onClick={handleTest4ManHourly} className="test-cmd-btn">
+                  🧪 4-Man Crew (Hourly)
+                </button>
+              </div>
+            </div>
+
+            <div className="test-command-card">
+              <h3>Bulk Test Data</h3>
+              <p>Create multiple bookings at once for comprehensive testing</p>
+              <div className="test-command-buttons">
+                <button onClick={handleBulkTestBookings} className="test-cmd-btn bulk">
+                  📋 Create 5 Test Bookings
+                </button>
+                <button onClick={handleNextWeekBookings} className="test-cmd-btn bulk">
+                  📅 Fill Next Week with Bookings
+                </button>
+              </div>
+            </div>
+
+            <div className="test-command-card">
+              <h3>Utilities</h3>
+              <p>Development utilities for managing test data</p>
+              <div className="test-command-buttons">
+                <button onClick={handleClearTestBookings} className="test-cmd-btn danger">
+                  🗑️ Clear Test Bookings (localStorage)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="test-command-info">
+            <h4>📖 Browser Console Commands</h4>
+            <p>You can also use these commands directly in the browser console:</p>
+            <ul>
+              <li><code>testBookingCommands.createTest2ManHourlyBooking()</code></li>
+              <li><code>testBookingCommands.createTest3ManEstimateBooking()</code></li>
+              <li><code>testBookingCommands.createBulkTestBookings(10)</code></li>
+              <li><code>testBookingCommands.createCustomTestBooking({'{crewSize: 3, serviceType: "hourly"}'})</code></li>
+            </ul>
+          </div>
         </div>
 
         {/* Database Cleanup Section */}

@@ -35,9 +35,9 @@ export default function PricingAndContact() {
         <div className="pricing-info">
           <h3>Team Pricing</h3>
           <ul>
-            <li>2-Man Team - ${rates.twoMan || 70}/hour</li>
-            <li>3-Man Team - ${rates.threeMan || 100}/hour</li>
-            <li>4-Man Team - ${rates.fourMan || 130}/hour</li>
+            <li>2-Man Team - ${rates.twoMan || 85}/hour</li>
+            <li>3-Man Team - ${rates.threeMan || 117}/hour</li>
+            <li>4-Man Team - ${rates.fourMan || 140}/hour</li>
           </ul>
           <p><em>Final rates may vary based on job complexity and duration</em></p>
         </div>
