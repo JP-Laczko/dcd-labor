@@ -18,7 +18,7 @@ export default function Contact() {
                 <div className="contact-icon">📞</div>
                 <h3>Phone</h3>
                 <p>
-                  <a href="tel:+16094050999">(609) 405-0999</a>
+                  <a href="tel:+19739452076">(973) 945-2076</a>
                 </p>
               </div>
 
@@ -26,14 +26,14 @@ export default function Contact() {
                 <div className="contact-icon">✉️</div>
                 <h3>Email</h3>
                 <p>
-                  <a href="mailto:dcdlabor14@gmail.com">dcdlabor14@gmail.com</a>
+                  <a href="mailto:nickdargel@dcdlabor.com">nickdargel@dcdlabor.com</a>
                 </p>
               </div>
 
               <div className="contact-card">
                 <div className="contact-icon">📍</div>
                 <h3>Service Area</h3>
-                <p>New Jersey & Surrounding Areas</p>
+                <p>Morris County, New Jersey</p>
               </div>
             </div>
 
@@ -47,11 +47,11 @@ export default function Contact() {
                 </div>
                 <div className="hours-item">
                   <span className="day">Saturday</span>
-                  <span className="time">10:00 AM - 8:00 PM</span>
+                  <span className="time">9:00 AM - 1:00 PM</span>
                 </div>
                 <div className="hours-item">
                   <span className="day">Sunday</span>
-                  <span className="time">10:00 AM - 8:00 PM</span>
+                  <span className="time">Not Available</span>
                 </div>
               </div>
             </div>

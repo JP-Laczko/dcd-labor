@@ -8,6 +8,7 @@ export default function Navbar() {
     <nav className="navbar">
       <div className="logo">
         <Link to="/">
+          <img src="/DCDLaborFavicon.png" alt="DCD Labor" className="logo-icon" />
           DCD Labor
         </Link>
       </div>
@@ -17,9 +18,14 @@ export default function Navbar() {
             Home
           </Link>
         </li>
+        <li className={location.pathname === "/schedule-service" ? "active" : ""}>
+          <Link to="/schedule-service">
+            Schedule Service
+          </Link>
+        </li>
         <li className={location.pathname === "/schedule" ? "active" : ""}>
           <Link to="/schedule">
-            Book Service
+            Request a quote
           </Link>
         </li>
         <li className={location.pathname === "/our-story" ? "active" : ""}>

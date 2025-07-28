@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Schedule from "./pages/Schedule";
+import ScheduleService from "./pages/ScheduleService";
 import Contact from "./pages/Contact";
 import OurStory from "./pages/OurStory";
 import Admin from "./pages/Admin";
@@ -12,6 +13,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/our-story" element={<OurStory />} />
+        <Route path="/schedule-service" element={<ScheduleService />} />
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/admin" element={<Admin />} />

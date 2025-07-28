@@ -11,14 +11,14 @@ export default function BookingModal({
   selectedDate, 
   booking = null, // null for add, booking object for edit
   onBookingChange,
-  onChargeClick = null // Optional prop for charge functionality
+  onFinalPayment = null // Optional prop for final payment functionality
 }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     address: '',
-    serviceType: 'estimate',
+    serviceType: 'hourly', // Default to hourly for admin bookings
     crewSize: '2',
     yardAcreage: '',
     services: [],
@@ -137,7 +137,7 @@ export default function BookingModal({
           email: booking.customer?.email || '',
           phone: booking.customer?.phone || '',
           address: booking.customer?.address || booking.service?.address || '',
-          serviceType: booking.service?.serviceType || 'estimate',
+          serviceType: 'hourly', // Admin bookings default to hourly
           crewSize: booking.service?.crewSize?.toString() || '2',
           yardAcreage: booking.service?.yardAcreage || '',
           services: booking.service?.services || [],
@@ -152,7 +152,7 @@ export default function BookingModal({
           email: '',
           phone: '',
           address: '',
-          serviceType: 'estimate',
+          serviceType: 'hourly', // Admin bookings default to hourly
           crewSize: '2',
           yardAcreage: '',
           services: [],
@@ -185,26 +185,8 @@ export default function BookingModal({
     }
   };
 
-  const handleServiceTypeChange = (serviceType) => {
-    setFormData(prev => ({
-      ...prev,
-      serviceType: serviceType,
-      services: [] // Clear services when switching type
-    }));
-    // Clear service errors
-    if (errors.services || errors.serviceType) {
-      setErrors(prev => ({
-        ...prev,
-        services: '',
-        serviceType: ''
-      }));
-    }
-  };
 
   const handleServiceChange = (service) => {
-    // Only allow changes if a service type is selected
-    if (!formData.serviceType) return;
-    
     setFormData(prev => ({
       ...prev,
       services: prev.services.includes(service)
@@ -220,7 +202,6 @@ export default function BookingModal({
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
     if (!formData.address.trim()) newErrors.address = 'Address is required';
-    if (!formData.serviceType) newErrors.serviceType = 'Please select service type';
     if (formData.services.length === 0) newErrors.services = 'Please select at least one service';
     if (!formData.timeSlot) newErrors.timeSlot = 'Please select a time slot';
     
@@ -303,17 +284,24 @@ export default function BookingModal({
   const handleChargeClick = () => {
     if (!booking) return;
     
-    // Set up charge data with stored crew rate or fallback to current rate
-    const storedRate = booking.service?.hourlyRate;
-    const crewSizeKey = `${booking.service?.crewSize || 2}Man`;
-    const fallbackRate = rates[crewSizeKey] || 0;
+    console.log('🎯 BookingModal: Charge & Complete clicked, calling onFinalPayment');
     
-    setChargeData({
-      materialsCost: '',
-      serviceHours: '',
-      crewRate: storedRate || fallbackRate
-    });
-    setShowChargeModal(true);
+    if (onFinalPayment) {
+      // Use the proper SquareFinalPayment component
+      onFinalPayment(booking);
+    } else {
+      // Fallback to old behavior if onFinalPayment not provided
+      const storedRate = booking.service?.hourlyRate;
+      const crewSizeKey = `${booking.service?.crewSize || 2}Man`;
+      const fallbackRate = rates[crewSizeKey] || 0;
+      
+      setChargeData({
+        materialsCost: '',
+        serviceHours: '',
+        crewRate: storedRate || fallbackRate
+      });
+      setShowChargeModal(true);
+    }
   };
 
   const handleChargeInputChange = (e) => {
@@ -495,15 +483,13 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
         >
           Edit Booking
         </button>
-        {onChargeClick && (
-          <button 
-            type="button" 
-            onClick={() => onChargeClick(booking)}
-            className="charge-button"
-          >
-            Charge & Complete
-          </button>
-        )}
+        <button 
+          type="button" 
+          onClick={handleChargeClick}
+          className="charge-button"
+        >
+          Charge & Complete
+        </button>
         <button 
           type="button" 
           onClick={() => setShowDeleteConfirm(true)}
@@ -676,58 +662,23 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
             </div>
 
             <div className="form-group">
-              <label>Service Type *</label>
-              <div className="service-type-selection">
-                <div 
-                  className={`service-type-card ${formData.serviceType === 'hourly' ? 'selected' : ''}`}
-                  onClick={() => handleServiceTypeChange('hourly')}
-                >
-                  <h4>Hourly Services</h4>
-                  <p>Simple tasks with set hourly rates</p>
-                  <ul>
-                    {hourlyServices.map((service, idx) => (
-                      <li key={idx}>{service}</li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div 
-                  className={`service-type-card ${formData.serviceType === 'estimate' ? 'selected' : ''}`}
-                  onClick={() => handleServiceTypeChange('estimate')}
-                >
-                  <h4>Estimate Services</h4>
-                  <p>Complex tasks requiring assessment</p>
-                  <ul>
-                    {estimateServices.slice(0, 3).map((service, idx) => (
-                      <li key={idx}>{service}</li>
-                    ))}
-                    {estimateServices.length > 3 && <li>+ {estimateServices.length - 3} more...</li>}
-                  </ul>
-                </div>
-              </div>
-              {errors.serviceType && <span className="error-text">{errors.serviceType}</span>}
-              
-              {/* Service Selection (shown only after type is selected) */}
-              {formData.serviceType && (
-                <div className="selected-services-section">
-                  <label>Select Services * (choose from {formData.serviceType} services)</label>
-                  <div className="services-grid">
-                    {(formData.serviceType === 'hourly' ? hourlyServices : estimateServices).map(service => (
-                      <div key={service} className="service-item">
-                        <input
-                          type="checkbox"
-                          id={service}
-                          checked={formData.services.includes(service)}
-                          onChange={() => handleServiceChange(service)}
-                        />
-                        <label htmlFor={service}>{service}</label>
-                      </div>
-                    ))}
+              <label>Select Services *</label>
+              <div className="services-grid">
+                {hourlyServices.map(service => (
+                  <div key={service} className="service-item">
+                    <input
+                      type="checkbox"
+                      id={service}
+                      checked={formData.services.includes(service)}
+                      onChange={() => handleServiceChange(service)}
+                    />
+                    <label htmlFor={service}>{service}</label>
                   </div>
-                  {errors.services && <span className="error-text">{errors.services}</span>}
-                </div>
-              )}
+                ))}
+              </div>
+              {errors.services && <span className="error-text">{errors.services}</span>}
             </div>
+
 
             <div className="form-group">
               <label htmlFor="notes">Additional Notes</label>

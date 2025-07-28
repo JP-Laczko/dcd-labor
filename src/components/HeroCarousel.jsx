@@ -88,7 +88,7 @@ export default function HeroCarousel() {
           letterSpacing: "-0.02em",
           textShadow: "0 6px 16px rgba(0,0,0,0.9), 0 3px 6px rgba(0,0,0,0.8)"
         }}>
-          Local Student-Powered Landscaping
+          Local student powered labor
         </h1>
         <p style={{ 
           fontSize: "clamp(0.8rem, 2.2vw, 1.7rem)", 
@@ -98,7 +98,7 @@ export default function HeroCarousel() {
           textShadow: "0 4px 12px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8)",
           lineHeight: "1.2"
         }}>
-          Reliable. Affordable. We're your neighbors.
+          Affordable. Reliable. Trustworthy.
         </p>
       </div>
     </section>

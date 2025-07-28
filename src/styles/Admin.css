@@ -336,12 +336,13 @@
 }
 
 .day-header {
-  background-color: #4CAF50;
-  color: white;
+  background-color: #f8f9fa;
+  color: #333;
   padding: 10px;
   text-align: center;
   font-weight: bold;
   font-size: 14px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .calendar-day {

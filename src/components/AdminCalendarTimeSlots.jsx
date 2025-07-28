@@ -152,6 +152,17 @@ export default function AdminCalendarTimeSlots() {
     setDailyTimeSlots(prevTimeSlots => {
       const newTimeSlots = new Map(prevTimeSlots);
       
+      // First, reset all slots to available (remove booking status)
+      newTimeSlots.forEach((daySlots, dateString) => {
+        const resetSlots = daySlots.map(slot => ({
+          ...slot,
+          isAvailable: true,
+          bookingId: null
+        }));
+        newTimeSlots.set(dateString, resetSlots);
+      });
+      
+      // Then, mark slots as booked based on current bookings
       bookingsByDate.forEach((bookings, dateString) => {
         const daySlots = newTimeSlots.get(dateString);
         if (daySlots) {
@@ -201,8 +212,12 @@ export default function AdminCalendarTimeSlots() {
   const removeTimeSlot = (index) => {
     const slot = editingTimeSlots[index];
     if (slot.bookingId) {
-      alert("Cannot remove a time slot that has a booking. Please cancel the booking first.");
-      return;
+      const confirmRemoval = window.confirm(
+        "This time slot has a booking. Removing it will force the time slot to be available again. This should fix the booking glitch where removed bookings still show as booked. Continue?"
+      );
+      if (!confirmRemoval) {
+        return;
+      }
     }
     setEditingTimeSlots(editingTimeSlots.filter((_, i) => i !== index));
   };
@@ -338,9 +353,9 @@ export default function AdminCalendarTimeSlots() {
     }
   };
 
-  const handleBookingChange = () => {
-    fetchTimeSlots();
-    fetchBookings();
+  const handleBookingChange = async () => {
+    await fetchTimeSlots();
+    await fetchBookings();
   };
 
   const days = getDaysInMonth(currentDate);
@@ -364,7 +379,7 @@ export default function AdminCalendarTimeSlots() {
           <div className="day-header">Wed</div>
           <div className="day-header">Thu</div>
           <div className="day-header">Fri</div>
-          <div className="day-header">Sat</div>
+          <div className="day-header"></div>
           {days.map((date, index) => {
             if (!date) {
               return <div key={index} className="calendar-day inactive"></div>;

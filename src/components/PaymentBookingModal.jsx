@@ -26,7 +26,8 @@ export default function PaymentBookingModal({
     services: [],
     timeSlot: '',
     displayTime: '',
-    notes: ''
+    notes: '',
+    leafHaul: false
   });
 
   const [rates, setRates] = useState({});
@@ -64,13 +65,14 @@ export default function PaymentBookingModal({
         email: '',
         phone: '',
         address: '',
-        serviceType: '',
+        serviceType: 'hourly', // Default to hourly for calendar bookings
         crewSize: '2',
         yardAcreage: '',
         services: [],
         timeSlot: selectedTimeSlot || '',
         displayTime: selectedTimeSlot ? timeSlotUtils.formatTimeForDisplay(selectedTimeSlot) : '',
-        notes: ''
+        notes: '',
+        leafHaul: false
       };
       
       setFormData({
@@ -192,26 +194,8 @@ export default function PaymentBookingModal({
     }
   };
 
-  const handleServiceTypeChange = (serviceType) => {
-    setFormData(prev => ({
-      ...prev,
-      serviceType: serviceType,
-      services: [] // Clear services when switching type
-    }));
-    // Clear service errors
-    if (errors.services || errors.serviceType) {
-      setErrors(prev => ({
-        ...prev,
-        services: '',
-        serviceType: ''
-      }));
-    }
-  };
 
   const handleServiceChange = (service) => {
-    // Only allow changes if a service type is selected
-    if (!formData.serviceType) return;
-    
     setFormData(prev => ({
       ...prev,
       services: prev.services.includes(service)
@@ -227,7 +211,6 @@ export default function PaymentBookingModal({
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
     if (!formData.address.trim()) newErrors.address = 'Address is required';
-    if (!formData.serviceType) newErrors.serviceType = 'Please select service type';
     if (formData.services.length === 0) newErrors.services = 'Please select at least one service';
     if (!formData.timeSlot && !selectedTimeSlot) newErrors.timeSlot = 'Time slot is required';
     
@@ -487,6 +470,7 @@ export default function PaymentBookingModal({
               name="crewSize"
               value={formData.crewSize}
               onChange={handleInputChange}
+              className="form-select-styled"
             >
               <option value="2">2-Man Crew (${rates.twoMan || 70}/hr)</option>
               <option value="3">3-Man Crew (${rates.threeMan || 100}/hr)</option>
@@ -522,57 +506,38 @@ export default function PaymentBookingModal({
 
 
         <div className="form-group">
-          <label>Service Type *</label>
-          <div className="service-type-selection">
-            <div 
-              className={`service-type-card ${formData.serviceType === 'hourly' ? 'selected' : ''}`}
-              onClick={() => handleServiceTypeChange('hourly')}
-            >
-              <h4>Hourly Services</h4>
-              <p>Simple tasks with set hourly rates</p>
-              <ul>
-                {hourlyServices.map((service, idx) => (
-                  <li key={idx}>{service}</li>
-                ))}
-              </ul>
-            </div>
-            
-            <div 
-              className={`service-type-card ${formData.serviceType === 'estimate' ? 'selected' : ''}`}
-              onClick={() => handleServiceTypeChange('estimate')}
-            >
-              <h4>Estimate Services</h4>
-              <p>Complex tasks requiring assessment</p>
-              <ul>
-                {estimateServices.slice(0, 3).map((service, idx) => (
-                  <li key={idx}>{service}</li>
-                ))}
-                {estimateServices.length > 3 && <li>+ {estimateServices.length - 3} more...</li>}
-              </ul>
-            </div>
-          </div>
-          {errors.serviceType && <span className="error-text">{errors.serviceType}</span>}
-          
-          {/* Service Selection (shown only after type is selected) */}
-          {formData.serviceType && (
-            <div className="selected-services-section">
-              <label>Select Services * (choose from {formData.serviceType} services)</label>
-              <div className="services-grid">
-                {(formData.serviceType === 'hourly' ? hourlyServices : estimateServices).map(service => (
-                  <div key={service} className="service-item">
-                    <input
-                      type="checkbox"
-                      id={service}
-                      checked={formData.services.includes(service)}
-                      onChange={() => handleServiceChange(service)}
-                    />
-                    <label htmlFor={service}>{service}</label>
-                  </div>
-                ))}
+          <label>Select Services *</label>
+          <div className="services-grid">
+            {hourlyServices.map(service => (
+              <div key={service} className="service-item">
+                <input
+                  type="checkbox"
+                  id={service}
+                  checked={formData.services.includes(service)}
+                  onChange={() => handleServiceChange(service)}
+                />
+                <label htmlFor={service}>{service}</label>
               </div>
-              {errors.services && <span className="error-text">{errors.services}</span>}
-            </div>
-          )}
+            ))}
+          </div>
+          {errors.services && <span className="error-text">{errors.services}</span>}
+        </div>
+
+        {/* Leaf Haul Add-on */}
+        <div className="form-group leaf-haul-section">
+          <div className="leaf-haul-checkbox">
+            <input
+              type="checkbox"
+              id="leafHaul"
+              name="leafHaul"
+              checked={formData.leafHaul}
+              onChange={(e) => setFormData(prev => ({ ...prev, leafHaul: e.target.checked }))}
+            />
+            <label htmlFor="leafHaul" className="checkbox-label">
+              <span className="checkbox-text">Leaves hauled away</span>
+              <span className="addon-price">+$280</span>
+            </label>
+          </div>
         </div>
 
         <div className="form-group">
@@ -588,8 +553,8 @@ export default function PaymentBookingModal({
         </div>
 
         <div className="deposit-info">
-          <h4>Deposit Required</h4>
-          <p>A ${depositAmount} deposit is required to secure your booking. This will be deducted from your final payment.</p>
+          <h4>Payment Required</h4>
+          <p>A ${depositAmount} deposit is required to secure your booking{formData.leafHaul ? ', plus $280 for leaf haul service' : ''}. The deposit will be deducted from your final payment.</p>
         </div>
 
         {errors.submit && (
@@ -665,11 +630,21 @@ export default function PaymentBookingModal({
               <span>Services:</span>
               <span>{formData.services.join(', ')}</span>
             </div>
+            {formData.leafHaul && (
+              <div className="summary-item leaf-haul-item">
+                <span>Leaf Haul:</span>
+                <span>+$280</span>
+              </div>
+            )}
+            <div className="summary-item total-item">
+              <span><strong>Deposit Required:</strong></span>
+              <span><strong>${depositAmount + (formData.leafHaul ? 280 : 0)}</strong></span>
+            </div>
           </div>
 
           <SquarePayment
-            amount={depositAmount}
-            description={`$${depositAmount} deposit for landscaping service on ${selectedDate.toLocaleDateString()}`}
+            amount={depositAmount + (formData.leafHaul ? 280 : 0)}
+            description={`$${depositAmount + (formData.leafHaul ? 280 : 0)} ${formData.leafHaul ? 'deposit + leaf haul' : 'deposit'} for landscaping service on ${selectedDate.toLocaleDateString()}`}
             customerInfo={{
               name: formData.name,
               email: formData.email,

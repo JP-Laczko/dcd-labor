@@ -7,6 +7,8 @@ export default function BookingSection() {
     { name: "Snow Removal", description: "Professional snow clearing and ice management", icon: "❄️" },
     { name: "Yard Cleanups", description: "Complete yard maintenance and debris removal", icon: "🍂" },
     { name: "Weeding", description: "Thorough weed removal and garden maintenance", icon: "🌱" },
+    { name: "Hedge & Bush Trimming", description: "Professional hedge shaping and bush maintenance", icon: "✂️" },
+    { name: "Demolition & Teardown", description: "Safe removal of structures and debris cleanup", icon: "🔨" },
     { name: "Mulching", description: "Professional mulch installation and spreading", icon: "🌳" },
     { name: "Log Splitting", description: "Firewood preparation and log processing", icon: "🪓" }
   ];

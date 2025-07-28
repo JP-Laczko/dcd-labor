@@ -51,12 +51,16 @@ const getEmailConfig = () => {
     return {
       customerFrom: 'DCD Labor <booking@dcdlabor.com>',
       adminFrom: 'DCD Labor System <noreply@dcdlabor.com>',
+      from: 'DCD Labor System <noreply@dcdlabor.com>',
+      to: process.env.DCD_EMAIL,
       sendToCustomer: true
     };
   } else {
     return {
       customerFrom: 'DCD Labor <onboarding@resend.dev>',
       adminFrom: 'DCD Labor System <onboarding@resend.dev>',
+      from: 'DCD Labor System <onboarding@resend.dev>',
+      to: process.env.DCD_EMAIL,
       sendToCustomer: false // Send customer emails to admin for testing
     };
   }
@@ -654,7 +658,7 @@ app.put('/api/bookings/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/bookings/:id - Delete booking
+// DELETE /api/bookings/:id - Delete booking and free up time slot
 app.delete('/api/bookings/:id', async (req, res) => {
   try {
     // Ensure database connection
@@ -666,10 +670,58 @@ app.delete('/api/bookings/:id', async (req, res) => {
     
     const collection = db.collection('bookings');
     
+    // First, find the booking to get its date and time slot info
+    const booking = await collection.findOne({ bookingId: id });
+    
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Delete the booking
     const result = await collection.deleteOne({ bookingId: id });
     
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Free up the time slot if booking has time slot information
+    if (booking.service && booking.service.date && booking.service.timeSlot) {
+      try {
+        const calendarCollection = db.collection('calendar_availability');
+        const dateString = booking.service.date;
+        const timeSlot = booking.service.timeSlot;
+        
+        console.log('📅 Freeing up time slot:', { date: dateString, timeSlot });
+        
+        // Find the calendar entry for this date
+        const calendarEntry = await calendarCollection.findOne({ date: dateString });
+        
+        if (calendarEntry && calendarEntry.availability && calendarEntry.availability.timeSlots) {
+          // Find and update the specific time slot to make it available
+          const timeSlots = calendarEntry.availability.timeSlots.map(slot => {
+            if (slot.time === timeSlot) {
+              return { ...slot, isAvailable: true };
+            }
+            return slot;
+          });
+          
+          // Update the calendar entry
+          await calendarCollection.updateOne(
+            { date: dateString },
+            { 
+              $set: { 
+                'availability.timeSlots': timeSlots,
+                updatedAt: new Date()
+              } 
+            }
+          );
+          
+          console.log('📅 Successfully freed up time slot:', timeSlot, 'on', dateString);
+        }
+      } catch (calendarError) {
+        console.error('⚠️ Error freeing up time slot:', calendarError);
+        // Don't fail the entire operation if calendar update fails
+      }
     }
     
     console.log('📋 Deleted booking:', id);
@@ -816,6 +868,232 @@ app.get('/api/email-preview', async (req, res) => {
       htmlContent = await generateCustomerEmailPreview(sampleBookingData, process.env.DCD_EMAIL);
     } else if (type === 'review') {
       htmlContent = await generateGoogleReviewEmailPreview(sampleBookingData, process.env.DCD_EMAIL);
+    } else if (type === 'quote-customer') {
+      // Quote customer confirmation email
+      const sampleQuoteData = {
+        name: 'John Smith',
+        email: 'john.smith@example.com',
+        phone: '(555) 123-4567',
+        address: '123 Main Street, Athens, GA 30601',
+        services: ['Mulching', 'Brush removal', 'Log splitting'],
+        yardAcreage: '0.5 acres',
+        notes: 'Please contact me in the morning.',
+        leafHaul: true,
+        submittedAt: new Date().toISOString()
+      };
+      const { from: fromEmail, to: dcdEmail } = getEmailConfig();
+      const servicesList = sampleQuoteData.services.join(', ');
+      const leafHaulText = sampleQuoteData.leafHaul ? ' (+ Leaf Haul Service $280)' : '';
+      
+      htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #22c55e; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9f9f9; }
+            .booking-details { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; }
+            .detail-row { padding: 8px 0; border-bottom: 1px solid #eee; }
+            .detail-label { font-weight: bold; min-width: 180px; display: inline-block; vertical-align: top; }
+            .detail-value { display: inline-block; vertical-align: top; }
+            .services-list { margin: 10px 0; }
+            .service-item { padding: 5px 0; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>DCD Labor - Quote Request Received</h1>
+              <p>Thank you for your interest in our landscaping services!</p>
+            </div>
+            
+            <div class="content">
+              <h2>Hello ${sampleQuoteData.name},</h2>
+              <p>We've received your quote request and will get back to you within 24 hours with a detailed estimate.</p>
+              
+              <div class="booking-details">
+                <h3>Quote Request Details</h3>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Name:</span>
+                  <span class="detail-value">${sampleQuoteData.name}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Email:</span>
+                  <span class="detail-value">${sampleQuoteData.email}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Phone:</span>
+                  <span class="detail-value">${sampleQuoteData.phone}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Service Address:</span>
+                  <span class="detail-value">${sampleQuoteData.address}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Property Size:</span>
+                  <span class="detail-value">${sampleQuoteData.yardAcreage}</span>
+                </div>
+                
+                <div class="services-list">
+                  <div class="detail-row">
+                    <span class="detail-label">Services Requested:</span>
+                    <span class="detail-value">
+                      ${sampleQuoteData.services.map(service => `<div class="service-item">• ${service}</div>`).join('')}
+                      ${sampleQuoteData.leafHaul ? '<div class="service-item">• Leaf Haul Service (+$280)</div>' : ''}
+                    </span>
+                  </div>
+                </div>
+                
+                ${sampleQuoteData.notes ? `
+                <div class="detail-row">
+                  <span class="detail-label">Additional Notes:</span>
+                  <span class="detail-value">${sampleQuoteData.notes}</span>
+                </div>
+                ` : ''}
+              </div>
+              
+              <h3>What's Next?</h3>
+              <ul>
+                <li>We'll review your request and prepare a detailed quote</li>
+                <li>You'll receive our estimate within 24 hours</li>
+              </ul>
+              
+              <p>If you have any questions or need to make changes to your request, please contact us at:</p>
+              <p><strong>Email:</strong> ${dcdEmail}<br>
+              <strong>Phone:</strong> (973) 945-2076</p>
+              
+              <p>Thank you for choosing DCD Labor!</p>
+            </div>
+            
+            <div class="footer">
+              <p>DCD Labor - Local Student Powered Labor<br>
+              Morris County, New Jersey | ${dcdEmail}</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+    } else if (type === 'quote-business') {
+      // Quote business notification email
+      const sampleQuoteData = {
+        name: 'John Smith',
+        email: 'john.smith@example.com',
+        phone: '(555) 123-4567',
+        address: '123 Main Street, Athens, GA 30601',
+        services: ['Mulching', 'Brush removal', 'Log splitting'],
+        yardAcreage: '0.5 acres',
+        notes: 'Please contact me in the morning.',
+        leafHaul: true,
+        submittedAt: new Date().toISOString()
+      };
+      const servicesList = sampleQuoteData.services.join(', ');
+      const leafHaulText = sampleQuoteData.leafHaul ? ' (+ Leaf Haul Service $280)' : '';
+      
+      // Create HTML bullet list for services in preview
+      const servicesHtml = sampleQuoteData.services.map(service => `<div style="margin: 8px 0; font-size: 16px; color: #374151;">• ${service}</div>`).join('');
+      const leafHaulHtml = sampleQuoteData.leafHaul ? `<div style="margin: 8px 0; font-size: 16px; color: #374151;">• Leaf Haul Service ($280)</div>` : '';
+      
+      htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1f2937; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9f9f9; }
+            .booking-details { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; }
+            .detail-row { padding: 8px 0; border-bottom: 1px solid #eee; }
+            .detail-label { font-weight: bold; min-width: 180px; display: inline-block; vertical-align: top; }
+            .detail-value { display: inline-block; vertical-align: top; }
+            .services-list { margin: 10px 0; }
+            .service-item { padding: 5px 0; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>New Quote Request</h1>
+              <p>A customer has submitted a quote request</p>
+            </div>
+            
+            <div class="content">
+              <div class="booking-details">
+                <h3>Customer Information</h3>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Name:</span>
+                  <span class="detail-value">${sampleQuoteData.name}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Email:</span>
+                  <span class="detail-value">${sampleQuoteData.email}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Phone:</span>
+                  <span class="detail-value">${sampleQuoteData.phone}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Service Address:</span>
+                  <span class="detail-value">${sampleQuoteData.address}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Property Size:</span>
+                  <span class="detail-value">${sampleQuoteData.yardAcreage}</span>
+                </div>
+                
+                <div class="services-list">
+                  <div class="detail-row">
+                    <span class="detail-label">Services Requested:</span>
+                    <span class="detail-value">
+                      ${sampleQuoteData.services.map(service => `<div class="service-item">• ${service}</div>`).join('')}
+                      ${sampleQuoteData.leafHaul ? '<div class="service-item">• Leaf Haul Service (+$280)</div>' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              ${sampleQuoteData.notes ? `
+              <div class="booking-details">
+                <h3>Additional Notes</h3>
+                <div class="detail-row">
+                  <span class="detail-label">Notes:</span>
+                  <span class="detail-value">${sampleQuoteData.notes}</span>
+                </div>
+              </div>
+              ` : ''}
+              
+              <div class="booking-details">
+                <div class="detail-row">
+                  <span class="detail-label">Submitted:</span>
+                  <span class="detail-value">${new Date(sampleQuoteData.submittedAt).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p>DCD Labor - Local Student Powered Labor<br>
+              This is an automated message from the DCD Labor website quote request form.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
     } else {
       htmlContent = await generateDCDEmailPreview(sampleBookingData, process.env.DCD_EMAIL);
     }
@@ -1491,8 +1769,16 @@ async function sendEmailViaResend(emailData, apiKey) {
 }
 
 async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
-  const googleReviewUrl = "https://g.page/r/CdHSLMhhDOT7EBM/review";
+  const googleReviewUrl = "https://www.google.com/search?client=safari&sca_esv=c66ebe7918868edf&hl=en-us&q=dcdlabor.com+reviews&uds=AOm0WdEWLxsquUV4gxq7J1YSuvZiRdrTmX4_AU1giwU9g4ziDuRvlknMyw8gsZPSPmLgpACwT5a4DcPJolTo4Z-UodEeEr4lmt3mvF-9VGTFndsNmBDV_jzkyfXJwR_Ac73161-qrPI8dF2pgd5bneMJQVOwSeT2rfmn8mpmH5teNz-AIbl2eAhdkzjEERf7Hle3C1C9T0E4gqS4eIBWXZ8Eip3TTianQ18WEYhJu41HT0AwvWYbVlppKgPlPX0IsukInEd0HmPWlgXrM6JChy19L0xVBnlr72FrbQO6cSa7543CzG8pJLovROxq-d5EtpCNe3TSn0chG0qJVeuy4D68pIRpqnBNCD7Gty_wIvYnNQmsfQuzbq7yBCcYvTYiPy5sFSYBIo24egV1FhFDuLT6oPiP18VlUt2-G7jP76wX697Ul09hF0yKt86JDnrh2Aj_pK4PcT0S&si=AMgyJEtREmoPL4P1I5IDCfuA8gybfVI2d5Uj7QMwYCZHKDZ-E8Oh7e7S7KVYGDmINkdwDdU_8oWTBGghNCf07GL5t-9Z6w3ejGMuHEhZkASO--6r0p0kBn9s7kw4rctZXkUBwPzX_SWA&sa=X&ved=2ahUKEwjm-5er2LKOAxXuLVkFHTkACJIQk8gLegQIGxAB&ictx=1&stq=1&cs=1&lei=c-dvaKb2De7b5NoPuYCgkAk#ebo=4";
   const websiteUrl = "https://dcd-labor.vercel.app";
+  
+  // Get pricing information
+  const crewSizeLabels = {
+    '2': '2-Man Crew',
+    '3': '3-Man Crew', 
+    '4': '4-Man Crew'
+  };
+  const rateRange = await getRateRange(bookingData.service?.teamSize || bookingData.crewSize);
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -1528,6 +1814,28 @@ async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
             <h2>Hello ${bookingData.customer?.name || bookingData.name}!</h2>
             <p>We hope you're absolutely <span class="highlight">thrilled</span> with the landscaping work we completed at your property. Your satisfaction is our top priority, and we truly appreciate the opportunity to serve you.</p>
             <p>At DCD Labor, we take great pride in transforming outdoor spaces and delivering exceptional results for every client.</p>
+          </div>
+
+          <div class="thank-you-section">
+            <h3>📋 Service Summary</h3>
+            <div style="padding: 15px 0;">
+              <div style="margin: 8px 0;"><strong>Service Date:</strong> ${bookingData.service?.date ? new Date(bookingData.service.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</div>
+              <div style="margin: 8px 0;"><strong>Crew Size:</strong> ${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize || 'N/A'}</div>
+              ${bookingData.service?.address ? `<div style="margin: 8px 0;"><strong>Service Address:</strong> ${bookingData.service.address}</div>` : ''}
+              ${bookingData.services && bookingData.services.length > 0 ? `<div style="margin: 8px 0;"><strong>Services Completed:</strong><br>${bookingData.services.map(service => `&nbsp;&nbsp;• ${service}`).join('<br>')}</div>` : ''}
+              
+              ${bookingData.finalPaymentDetails ? `
+              <div style="margin: 16px 0; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #22c55e;">
+                <h4 style="margin: 0 0 8px 0; color: #16a34a;">💰 Final Payment Breakdown</h4>
+                <div style="margin: 4px 0;"><strong>Materials Cost:</strong> $${bookingData.finalPaymentDetails.materialsCost.toFixed(2)}</div>
+                <div style="margin: 4px 0;"><strong>Labor:</strong> ${bookingData.finalPaymentDetails.serviceHours} hours × $${bookingData.finalPaymentDetails.crewRate}/hr = $${bookingData.finalPaymentDetails.laborCost.toFixed(2)}</div>
+                <div style="margin: 4px 0; border-top: 1px solid #e5e7eb; padding-top: 4px;"><strong>Subtotal:</strong> $${bookingData.finalPaymentDetails.subtotal.toFixed(2)}</div>
+                <div style="margin: 4px 0;"><strong>Deposit Paid:</strong> -$${bookingData.finalPaymentDetails.deposit.toFixed(2)}</div>
+                <div style="margin: 4px 0;"><strong>Final Payment:</strong> $${bookingData.finalPaymentDetails.finalAmount.toFixed(2)}</div>
+                <div style="margin: 8px 0; padding-top: 8px; border-top: 2px solid #22c55e; font-size: 16px;"><strong>Total Service Cost: $${bookingData.finalPaymentDetails.totalPaid.toFixed(2)}</strong></div>
+              </div>
+              ` : `<div style="margin: 8px 0;"><strong>Service Rate:</strong> ${rateRange}</div>`}
+            </div>
           </div>
 
           <div class="review-section">
@@ -1575,19 +1883,36 @@ async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
     </html>
   `;
 
+  const emailConfig = getEmailConfig();
+  
   const emailData = {
-    from: dcdEmail,
-    to: [bookingData.customer?.email || bookingData.email],
-    subject: "🌟 Thank you for choosing DCD Labor - Share your experience!",
+    from: emailConfig.customerFrom,
+    to: emailConfig.sendToCustomer ? [bookingData.customer?.email || bookingData.email] : [dcdEmail],
+    subject: emailConfig.sendToCustomer ? "🌟 Thank you for choosing DCD Labor - Share your experience!" : "Review Email for Customer - DCD Labor (Testing)",
     html: htmlContent
   };
 
-  return await sendEmailViaResend(emailData, apiKey);
+  console.log('📧 Review email will be sent to:', emailData.to);
+  console.log('📧 Review email sendToCustomer setting:', emailConfig.sendToCustomer);
+  console.log('📧 Review email customer email:', bookingData.customer?.email || bookingData.email);
+  
+  const result = await sendEmailViaResend(emailData, apiKey);
+  console.log('📧 Review email sent successfully to:', emailData.to);
+  
+  return result;
 }
 
 async function generateGoogleReviewEmailPreview(bookingData, dcdEmail) {
-  const googleReviewUrl = "https://g.page/r/CdHSLMhhDOT7EBM/review";
+  const googleReviewUrl = "https://www.google.com/search?client=safari&sca_esv=c66ebe7918868edf&hl=en-us&q=dcdlabor.com+reviews&uds=AOm0WdEWLxsquUV4gxq7J1YSuvZiRdrTmX4_AU1giwU9g4ziDuRvlknMyw8gsZPSPmLgpACwT5a4DcPJolTo4Z-UodEeEr4lmt3mvF-9VGTFndsNmBDV_jzkyfXJwR_Ac73161-qrPI8dF2pgd5bneMJQVOwSeT2rfmn8mpmH5teNz-AIbl2eAhdkzjEERf7Hle3C1C9T0E4gqS4eIBWXZ8Eip3TTianQ18WEYhJu41HT0AwvWYbVlppKgPlPX0IsukInEd0HmPWlgXrM6JChy19L0xVBnlr72FrbQO6cSa7543CzG8pJLovROxq-d5EtpCNe3TSn0chG0qJVeuy4D68pIRpqnBNCD7Gty_wIvYnNQmsfQuzbq7yBCcYvTYiPy5sFSYBIo24egV1FhFDuLT6oPiP18VlUt2-G7jP76wX697Ul09hF0yKt86JDnrh2Aj_pK4PcT0S&si=AMgyJEtREmoPL4P1I5IDCfuA8gybfVI2d5Uj7QMwYCZHKDZ-E8Oh7e7S7KVYGDmINkdwDdU_8oWTBGghNCf07GL5t-9Z6w3ejGMuHEhZkASO--6r0p0kBn9s7kw4rctZXkUBwPzX_SWA&sa=X&ved=2ahUKEwjm-5er2LKOAxXuLVkFHTkACJIQk8gLegQIGxAB&ictx=1&stq=1&cs=1&lei=c-dvaKb2De7b5NoPuYCgkAk#ebo=4";
   const websiteUrl = "https://dcd-labor.vercel.app";
+  
+  // Get pricing information
+  const crewSizeLabels = {
+    '2': '2-Man Crew',
+    '3': '3-Man Crew', 
+    '4': '4-Man Crew'
+  };
+  const rateRange = await getRateRange(bookingData.service?.teamSize || bookingData.crewSize);
 
   return `
     <!DOCTYPE html>
@@ -1623,6 +1948,28 @@ async function generateGoogleReviewEmailPreview(bookingData, dcdEmail) {
             <h2>Hello ${bookingData.customer?.name || bookingData.name}!</h2>
             <p>We hope you're absolutely <span class="highlight">thrilled</span> with the landscaping work we completed at your property. Your satisfaction is our top priority, and we truly appreciate the opportunity to serve you.</p>
             <p>At DCD Labor, we take great pride in transforming outdoor spaces and delivering exceptional results for every client.</p>
+          </div>
+
+          <div class="thank-you-section">
+            <h3>📋 Service Summary</h3>
+            <div style="padding: 15px 0;">
+              <div style="margin: 8px 0;"><strong>Service Date:</strong> ${bookingData.service?.date ? new Date(bookingData.service.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</div>
+              <div style="margin: 8px 0;"><strong>Crew Size:</strong> ${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize || 'N/A'}</div>
+              ${bookingData.service?.address ? `<div style="margin: 8px 0;"><strong>Service Address:</strong> ${bookingData.service.address}</div>` : ''}
+              ${bookingData.services && bookingData.services.length > 0 ? `<div style="margin: 8px 0;"><strong>Services Completed:</strong><br>${bookingData.services.map(service => `&nbsp;&nbsp;• ${service}`).join('<br>')}</div>` : ''}
+              
+              ${bookingData.finalPaymentDetails ? `
+              <div style="margin: 16px 0; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #22c55e;">
+                <h4 style="margin: 0 0 8px 0; color: #16a34a;">💰 Final Payment Breakdown</h4>
+                <div style="margin: 4px 0;"><strong>Materials Cost:</strong> $${bookingData.finalPaymentDetails.materialsCost.toFixed(2)}</div>
+                <div style="margin: 4px 0;"><strong>Labor:</strong> ${bookingData.finalPaymentDetails.serviceHours} hours × $${bookingData.finalPaymentDetails.crewRate}/hr = $${bookingData.finalPaymentDetails.laborCost.toFixed(2)}</div>
+                <div style="margin: 4px 0; border-top: 1px solid #e5e7eb; padding-top: 4px;"><strong>Subtotal:</strong> $${bookingData.finalPaymentDetails.subtotal.toFixed(2)}</div>
+                <div style="margin: 4px 0;"><strong>Deposit Paid:</strong> -$${bookingData.finalPaymentDetails.deposit.toFixed(2)}</div>
+                <div style="margin: 4px 0;"><strong>Final Payment:</strong> $${bookingData.finalPaymentDetails.finalAmount.toFixed(2)}</div>
+                <div style="margin: 8px 0; padding-top: 8px; border-top: 2px solid #22c55e; font-size: 16px;"><strong>Total Service Cost: $${bookingData.finalPaymentDetails.totalPaid.toFixed(2)}</strong></div>
+              </div>
+              ` : `<div style="margin: 8px 0;"><strong>Service Rate:</strong> ${rateRange}</div>`}
+            </div>
           </div>
 
           <div class="review-section">
@@ -1968,6 +2315,236 @@ app.post('/api/send-booking-confirmation', async (req, res) => {
   } catch (error) {
     console.error('❌ Error sending booking confirmation emails:', error);
     res.status(500).json({ error: 'Failed to send emails', details: error.message });
+  }
+});
+
+// GET /api/send-quote-request - View quote request email preview
+app.get('/api/send-quote-request', async (req, res) => {
+  try {
+    // Redirect to email preview for quote emails
+    res.redirect('/api/email-preview?type=quote-customer');
+  } catch (error) {
+    console.error('❌ Error redirecting to quote preview:', error);
+    res.status(500).json({ error: 'Failed to load quote preview' });
+  }
+});
+
+// POST /api/send-quote-request - Send quote request emails
+app.post('/api/send-quote-request', async (req, res) => {
+  try {
+    const quoteData = req.body;
+    
+    if (!quoteData) {
+      return res.status(400).json({ error: 'Quote data is required' });
+    }
+    
+    console.log('📧 POST /api/send-quote-request - Sending quote request for:', quoteData.name || 'unknown customer');
+    
+    const { from: fromEmail, to: dcdEmail } = getEmailConfig();
+    
+    // Create services list text
+    const servicesList = quoteData.services.join(', ');
+    const leafHaulText = quoteData.leafHaul ? ' (+ Leaf Haul Service $280)' : '';
+    
+    // Create HTML bullet list for services
+    const servicesHtml = quoteData.services.map(service => `<div style="margin: 8px 0; font-size: 16px; color: #374151;">• ${service}</div>`).join('');
+    const leafHaulHtml = quoteData.leafHaul ? `<div style="margin: 8px 0; font-size: 16px; color: #374151;">• Leaf Haul Service ($280)</div>` : '';
+    
+    // Send quote request to business
+    await resend.emails.send({
+      from: fromEmail,
+      to: dcdEmail,
+      subject: `New Quote Request from ${quoteData.name}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1f2937; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9f9f9; }
+            .booking-details { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; }
+            .detail-row { padding: 8px 0; border-bottom: 1px solid #eee; }
+            .detail-label { font-weight: bold; min-width: 180px; display: inline-block; vertical-align: top; }
+            .detail-value { display: inline-block; vertical-align: top; }
+            .services-list { margin: 10px 0; }
+            .service-item { padding: 5px 0; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>New Quote Request</h1>
+              <p>A customer has submitted a quote request</p>
+            </div>
+            
+            <div class="content">
+              <div class="booking-details">
+                <h3>Customer Information</h3>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Name:</span>
+                  <span class="detail-value">${quoteData.name}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Email:</span>
+                  <span class="detail-value">${quoteData.email}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Phone:</span>
+                  <span class="detail-value">${quoteData.phone}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Service Address:</span>
+                  <span class="detail-value">${quoteData.address}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Property Size:</span>
+                  <span class="detail-value">${quoteData.yardAcreage}</span>
+                </div>
+                
+                <div class="services-list">
+                  <div class="detail-row">
+                    <span class="detail-label">Services Requested:</span>
+                    <span class="detail-value">
+                      ${quoteData.services.map(service => `<div class="service-item">• ${service}</div>`).join('')}
+                      ${quoteData.leafHaul ? '<div class="service-item">• Leaf Haul Service (+$280)</div>' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              ${quoteData.notes ? `
+              <div class="booking-details">
+                <h3>Additional Notes</h3>
+                <div class="detail-row">
+                  <span class="detail-label">Notes:</span>
+                  <span class="detail-value">${quoteData.notes}</span>
+                </div>
+              </div>
+              ` : ''}
+              
+              <div class="booking-details">
+                <div class="detail-row">
+                  <span class="detail-label">Submitted:</span>
+                  <span class="detail-value">${new Date(quoteData.submittedAt).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p>DCD Labor - Local Student Powered Labor<br>
+              This is an automated message from the DCD Labor website quote request form.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    });
+    
+    // Send confirmation to customer
+    await resend.emails.send({
+      from: fromEmail,
+      to: quoteData.email,
+      subject: 'Quote Request Received - DCD Labor',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #22c55e; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9f9f9; }
+            .booking-details { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; }
+            .detail-row { padding: 8px 0; border-bottom: 1px solid #eee; }
+            .detail-label { font-weight: bold; min-width: 180px; display: inline-block; vertical-align: top; }
+            .detail-value { display: inline-block; vertical-align: top; }
+            .services-list { margin: 10px 0; }
+            .service-item { padding: 5px 0; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>DCD Labor - Quote Request Received</h1>
+              <p>Thank you for your interest in our landscaping services!</p>
+            </div>
+            
+            <div class="content">
+              <h2>Hello ${quoteData.name},</h2>
+              <p>We've received your quote request and will get back to you within 24 hours with a detailed estimate.</p>
+              
+              <div class="booking-details">
+                <h3>Your Request Summary</h3>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Service Address:</span>
+                  <span class="detail-value">${quoteData.address}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Property Size:</span>
+                  <span class="detail-value">${quoteData.yardAcreage}</span>
+                </div>
+                
+                <div class="services-list">
+                  <div class="detail-row">
+                    <span class="detail-label">Services Requested:</span>
+                    <span class="detail-value">
+                      ${quoteData.services.map(service => `<div class="service-item">• ${service}</div>`).join('')}
+                      ${quoteData.leafHaul ? '<div class="service-item">• Leaf Haul Service (+$280)</div>' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <h3>What's Next?</h3>
+              <ul>
+                <li>We'll review your request and prepare a detailed quote</li>
+                <li>You'll receive our estimate within 24 hours</li>
+              </ul>
+              
+              <p>In the meantime, if you have any questions, feel free to contact us:</p>
+              <div class="booking-details">
+                <div class="detail-row">
+                  <span class="detail-label">Email:</span>
+                  <span class="detail-value">${dcdEmail}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Phone:</span>
+                  <span class="detail-value">(973) 945-2076</span>
+                </div>
+              </div>
+              
+              <p>Thank you for choosing DCD Labor!</p>
+            </div>
+            
+            <div class="footer">
+              <p>DCD Labor - Local Student Powered Labor<br>
+              Morris County, New Jersey | ${dcdEmail}</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    });
+    
+    console.log('✅ Quote request emails sent successfully for:', quoteData.name);
+    res.json({ success: true, message: 'Quote request submitted successfully' });
+    
+  } catch (error) {
+    console.error('❌ Error sending quote request emails:', error);
+    res.status(500).json({ error: 'Failed to send quote request', details: error.message });
   }
 });
 

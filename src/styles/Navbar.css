@@ -19,8 +19,16 @@
   font-size: 1.8rem;
   font-weight: bold;
   text-decoration: none;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   transition: color 0.3s ease;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .navbar .logo a:hover {

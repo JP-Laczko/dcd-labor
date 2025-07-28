@@ -216,7 +216,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   width: 100%;
   height: 100%;
   position: relative;
@@ -224,11 +224,13 @@
 }
 
 .day-icon {
+  position: absolute;
+  top: 4px;
+  right: 4px;
   font-size: 1rem;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
   animation: iconPulse 2s ease-in-out infinite;
-  align-self: flex-end;
-  margin-top: auto;
+  z-index: 1;
 }
 
 @keyframes iconPulse {
@@ -296,11 +298,11 @@
 }
 
 .calendar-day.unavailable {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%);
   color: var(--white);
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 
-    0 4px 8px rgba(220, 38, 38, 0.3),
+    0 4px 8px rgba(107, 114, 128, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -391,7 +393,7 @@
 }
 
 .legend-color.unavailable {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%);
 }
 
 .legend-color.past {
@@ -523,23 +525,24 @@
   }
 
   .day-content {
-    justify-content: space-between;
     padding: 2px 0;
   }
 
   .day-number {
     font-size: 0.85rem;
-    align-self: flex-start;
+    top: 2px;
+    left: 2px;
   }
 
   .day-icon {
     font-size: 0.8rem;
-    align-self: flex-end;
+    top: 2px;
+    right: 2px;
   }
 
   .time-slots-preview {
-    align-self: flex-end;
-    margin-top: auto;
+    bottom: 2px;
+    width: calc(100% - 4px);
   }
 
   .calendar-legend {
@@ -617,26 +620,27 @@
   }
 
   .day-content {
-    justify-content: space-between;
     padding: 1px 0;
     height: 100%;
   }
 
   .day-number {
     font-size: 0.8rem;
-    align-self: flex-start;
+    top: 1px;
+    left: 1px;
   }
 
   .day-icon {
     font-size: 0.8rem !important;
-    align-self: flex-end !important;
+    top: 1px !important;
+    right: 1px !important;
     display: block !important;
     visibility: visible !important;
   }
 
   .time-slots-preview {
-    align-self: flex-end !important;
-    margin-top: auto !important;
+    bottom: 1px !important;
+    width: calc(100% - 2px) !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -718,24 +722,25 @@
   }
 
   .day-content {
-    justify-content: space-between;
     padding: 1px 0;
     height: 100%;
   }
 
   .day-number {
     font-size: 0.75rem;
-    align-self: flex-start;
+    top: 1px;
+    left: 1px;
   }
 
   .day-icon {
     font-size: 0.6rem;
-    align-self: flex-end;
+    top: 1px;
+    right: 1px;
   }
 
   .time-slots-preview {
-    align-self: flex-end;
-    margin-top: auto;
+    bottom: 1px;
+    width: calc(100% - 2px);
   }
 
   .calendar-legend {
@@ -754,8 +759,12 @@
 }
 
 .day-number {
+  position: absolute;
+  top: 4px;
+  left: 4px;
   font-size: 0.9rem;
   line-height: 1;
+  z-index: 1;
 }
 
 .slot-count {
@@ -769,13 +778,17 @@
 
 /* Time Slots Calendar Styling */
 .time-slots-preview {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   gap: 1px;
   align-items: center;
   justify-content: flex-end;
-  margin-top: auto;
-  width: 100%;
+  width: calc(100% - 8px);
+  z-index: 2;
 }
 
 .time-slot-preview {
@@ -917,11 +930,12 @@
     flex-direction: column !important;
     gap: 0.5px !important;
     align-items: center !important;
-    margin-top: auto !important;
-    align-self: flex-end !important;
+    bottom: 2px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
     max-height: none !important;
     overflow: visible !important;
-    width: 100% !important;
+    width: calc(100% - 4px) !important;
   }
   
   /* Ensure day icons are always visible on mobile */
@@ -930,7 +944,8 @@
     visibility: visible !important;
     opacity: 1 !important;
     font-size: 0.7rem !important;
-    align-self: flex-end !important;
+    top: 2px !important;
+    right: 2px !important;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)) !important;
   }
 }

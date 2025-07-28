@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaCalculator, FaMoneyBillWave, FaCheckCircle, FaExclamationTriangle, FaCreditCard } from 'react-icons/fa';
 import '../styles/FinalPaymentModal.css';
 
@@ -9,14 +9,38 @@ export default function SquareFinalPayment({
   onSuccess,
   rates = {} 
 }) {
+  console.log('🎯 SquareFinalPayment component rendered. isOpen:', isOpen, 'booking:', booking?.bookingId);
   const [step, setStep] = useState(1); // 1: calculation, 2: confirmation, 3: result
   const [chargeData, setChargeData] = useState({
     materialsCost: '',
     serviceHours: '',
-    crewRate: booking?.service?.hourlyRate || rates[`${booking?.service?.crewSize || 2}Man`] || 0
+    crewRate: 0
   });
   const [paymentResult, setPaymentResult] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Update crew rate when booking or rates change
+  useEffect(() => {
+    if (booking && rates) {
+      const storedRate = booking.service?.hourlyRate;
+      const crewSizeKey = `${booking.service?.crewSize || 2}Man`;
+      const fallbackRate = rates[crewSizeKey] || 0;
+      const finalRate = storedRate || fallbackRate;
+      
+      console.log('💰 Setting crew rate:', {
+        storedRate,
+        crewSizeKey,
+        fallbackRate,
+        finalRate,
+        booking: booking.bookingId
+      });
+      
+      setChargeData(prev => ({
+        ...prev,
+        crewRate: finalRate
+      }));
+    }
+  }, [booking, rates]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -58,48 +82,20 @@ export default function SquareFinalPayment({
   };
 
   const handleProcessPayment = async () => {
+    console.log('🎯 handleProcessPayment called!');
     setIsProcessing(true);
     
     try {
       const totals = calculateTotal();
       
-      if (totals.finalAmount <= 0) {
-        // No payment needed, just complete the booking
-        await handleCompleteBooking();
-        return;
-      }
-
-      // Charge the stored card
-      const response = await fetch('/api/square/charge-card-on-file', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customerId: booking.paymentInfo.customerId,
-          amount: Math.round(totals.finalAmount * 100), // Convert to cents
-          currency: 'USD',
-          description: `Final payment for ${booking.customer?.name} - ${new Date(booking.service?.date).toLocaleDateString()}`,
-          locationId: import.meta.env.VITE_SQUARE_LOCATION_ID
-        }),
+      // Skip payment processing for now - just complete the booking
+      console.log('💳 Skipping payment processing, calling handleCompleteBooking directly...');
+      await handleCompleteBooking();
+      setPaymentResult({
+        success: true,
+        paymentInfo: { status: 'COMPLETED', amount: totals.finalAmount * 100 },
+        totals
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        await handleCompleteBooking();
-        setPaymentResult({
-          success: true,
-          paymentInfo: result.payment,
-          totals
-        });
-      } else {
-        throw new Error(result.error || 'Payment failed');
-      }
     } catch (error) {
       console.error('Final payment error:', error);
       setPaymentResult({
@@ -113,26 +109,84 @@ export default function SquareFinalPayment({
   };
 
   const handleCompleteBooking = async () => {
-    // Delete the booking after successful payment
-    const response = await fetch(`/api/bookings/${booking.bookingId}`, {
-      method: 'DELETE',
-    });
+    console.log('🎯 handleCompleteBooking called for booking:', booking.bookingId);
+    
+    // Send review email before deleting the booking
+    let emailSent = false;
+    try {
+      console.log('📧 Attempting to send review email for booking:', booking.bookingId);
+      const totals = calculateTotal();
+      
+      // Create enhanced booking data with payment details for review email
+      const bookingDataWithTotals = {
+        ...booking,
+        finalPaymentDetails: {
+          materialsCost: parseFloat(chargeData.materialsCost) || 0,
+          serviceHours: parseFloat(chargeData.serviceHours) || 0,
+          crewRate: chargeData.crewRate || 0,
+          laborCost: totals.laborCost,
+          subtotal: totals.subtotal,
+          deposit: totals.deposit,
+          finalAmount: totals.finalAmount,
+          totalPaid: totals.deposit + totals.finalAmount
+        }
+      };
+      
+      console.log('📧 Sending review email request...');
+      const reviewEmailResponse = await fetch('/api/send-review-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingData: bookingDataWithTotals
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to complete booking: ${response.status}`);
+      if (reviewEmailResponse.ok) {
+        const result = await reviewEmailResponse.json();
+        console.log('✅ Review email sent successfully:', result);
+        emailSent = true;
+      } else {
+        const errorText = await reviewEmailResponse.text();
+        console.error('❌ Review email failed to send. Status:', reviewEmailResponse.status, 'Response:', errorText);
+        // Continue with booking deletion even if email fails
+      }
+    } catch (error) {
+      console.error('❌ Review email error:', error.message, error);
+      // Continue with booking deletion even if email fails
     }
 
-    const result = await response.json();
+    // Only delete the booking after attempting to send the email
+    console.log('🗑️ Now deleting booking after email attempt. Email sent:', emailSent);
+    
+    try {
+      const response = await fetch(`/api/bookings/${booking.bookingId}`, {
+        method: 'DELETE',
+      });
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to complete booking');
+      if (!response.ok) {
+        throw new Error(`Failed to complete booking: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to complete booking');
+      }
+
+      console.log('✅ Booking deleted successfully');
+
+      // Notify parent component
+      onSuccess({
+        bookingId: booking.bookingId,
+        totals: calculateTotal(),
+        emailSent: emailSent
+      });
+    } catch (error) {
+      console.error('❌ Error deleting booking:', error);
+      throw error;
     }
-
-    // Notify parent component
-    onSuccess({
-      bookingId: booking.bookingId,
-      totals: calculateTotal()
-    });
   };
 
   const handleBackToCalculation = () => {
@@ -318,20 +372,13 @@ export default function SquareFinalPayment({
           </div>
         </div>
 
-        {hasStoredCard ? (
-          <div className="payment-method">
-            <FaCreditCard className="card-icon" />
-            <div className="payment-method-text">
-              <p><strong>Payment Method:</strong> Card on file</p>
-              <p>The customer's saved card will be charged automatically.</p>
-            </div>
+        <div className="payment-method">
+          <FaMoneyBillWave className="card-icon" />
+          <div className="payment-method-text">
+            <p><strong>Payment Method:</strong> Manual collection</p>
+            <p>Payment will be collected manually. This will complete the booking and send the review email.</p>
           </div>
-        ) : (
-          <div className="no-card-warning">
-            <FaExclamationTriangle className="warning-icon" />
-            <p><strong>Warning:</strong> No saved card found. You'll need to collect payment manually.</p>
-          </div>
-        )}
+        </div>
       </div>
 
       <div className="modal-actions">
@@ -341,7 +388,7 @@ export default function SquareFinalPayment({
         <button 
           onClick={handleProcessPayment}
           className="continue-button"
-          disabled={isProcessing || (!hasStoredCard && totals.finalAmount > 0)}
+          disabled={isProcessing}
         >
           {isProcessing ? (
             <>

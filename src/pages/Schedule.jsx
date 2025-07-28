@@ -14,12 +14,13 @@ export default function Schedule() {
     email: "",
     phone: "",
     address: "",
-    serviceType: "", // "hourly" or "estimate"
+    serviceType: "estimate", // Only estimate services for quotes
     services: [],
     date: "",
     crewSize: "",
     yardAcreage: "",
-    notes: ""
+    notes: "",
+    leafHaul: false
   });
   
   const [selectedServiceType, setSelectedServiceType] = useState(""); // Track which section is selected
@@ -104,21 +105,27 @@ export default function Schedule() {
     }
   };
 
-  // Hourly Services (simple tasks)
-  const hourlyServices = [
-    "Leaf Removal",
-    "Weeding"
-  ];
-
   // Estimate Services (complex tasks requiring assessment)
   const estimateServices = [
-    "Lawn Mowing",
-    "Hedge Trimming", 
-    "Tree Removal",
-    "Landscaping Design",
-    "Mulching",
-    "Garden Maintenance",
-    "Pressure Washing"
+    "Demolition & teardown (hot tubs, sheds, etc.)",
+    "Furniture moving & lifting",
+    "Mulching", 
+    "Yard Cleanup",
+    "Leaf cleanup (Fall prep)",
+    "Hedge & bush trimming",
+    "Weeding & flowerbed maintenance",
+    "Seasonal yard prep (Spring/Fall cleanups)",
+    "Log splitting & stacking",
+    "Firewood delivery",
+    "Brush clearing",
+    "Equipment/material transport",
+    "Help loading/unloading trucks",
+    "Power washing (homes, patios, driveways)",
+    "Gravel spreading",
+    "Event setup & breakdown",
+    "Fence & post removal",
+    "Snow shoveling (winter seasonal)",
+    "Odd jobs / one-off projects"
   ];
 
   
@@ -162,28 +169,9 @@ export default function Schedule() {
     }
   };
 
-  const handleServiceTypeChange = (serviceType) => {
-    // Clear existing services when switching type
-    setSelectedServiceType(serviceType);
-    setFormData(prev => ({
-      ...prev,
-      serviceType: serviceType,
-      services: []
-    }));
-    // Clear service errors
-    if (errors.services) {
-      setErrors(prev => ({
-        ...prev,
-        services: ""
-      }));
-    }
-  };
 
   const handleServiceChange = (e) => {
     const { value, checked } = e.target;
-    
-    // Only allow changes if a service type is selected
-    if (!selectedServiceType) return;
     
     setFormData(prev => ({
       ...prev,
@@ -207,11 +195,7 @@ export default function Schedule() {
     if (!formData.email.trim()) newErrors.email = "Email is required";
     if (!formData.phone.trim()) newErrors.phone = "Phone is required";
     if (!formData.address.trim()) newErrors.address = "Address is required";
-    if (!formData.serviceType) newErrors.serviceType = "Please select service type";
     if (formData.services.length === 0) newErrors.services = "Please select at least one service";
-    if (!formData.date) newErrors.date = "Date is required";
-    if (!selectedTimeSlot) newErrors.timeSlot = "Please select a time slot";
-    if (!formData.crewSize) newErrors.crewSize = "Please select crew size";
     if (!formData.yardAcreage.trim()) newErrors.yardAcreage = "Yard acreage is required";
 
     // Email validation
@@ -230,40 +214,71 @@ export default function Schedule() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submitted with data:', formData);
     
     if (!validateForm()) {
+      console.log('Form validation failed, errors:', errors);
       return;
     }
 
+    console.log('Form validation passed, submitting...');
     setIsSubmitting(true);
 
     try {
-      // Check date availability before proceeding to payment
-      const dateString = new Date(formData.date).toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
+      // Submit quote request via email (no calendar booking for quotes)
+      const quoteData = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        services: formData.services,
+        yardAcreage: formData.yardAcreage,
+        notes: formData.notes,
+        leafHaul: formData.leafHaul,
+        requestType: 'quote',
+        submittedAt: new Date().toISOString()
+      };
       
-      // FIRST CHECK: Block same-day booking
-      if (dateString === today) {
-        alert('Same-day booking is not available. Please select a future date.');
-        setIsSubmitting(false);
-        return;
+      // Send quote request email
+      console.log('Sending quote request:', quoteData);
+      const response = await fetch('/api/send-quote-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(quoteData)
+      });
+      
+      console.log('Quote request response status:', response.status);
+      console.log('Quote request response ok:', response.ok);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Quote request result:', result);
+        alert('Quote request submitted successfully! We\'ll get back to you within 24 hours.');
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          address: "",
+          serviceType: "estimate",
+          services: [],
+          date: "",
+          crewSize: "",
+          yardAcreage: "",
+          notes: "",
+          leafHaul: false
+        });
+      } else {
+        const errorText = await response.text();
+        console.error('Quote request failed:', response.status, errorText);
+        throw new Error(`Failed to submit quote request: ${response.status}`);
       }
-      
-      const availabilityCheck = await mongoService.checkDateAvailability(dateString);
-      
-      if (!availabilityCheck.isAvailable) {
-        alert(`Sorry, ${new Date(formData.date).toLocaleDateString()} is not available for booking. Please choose another date.`);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Set the selected date and open payment modal
-      setSelectedDate(new Date(formData.date));
-      setShowPaymentModal(true);
       
     } catch (error) {
-      console.error("Error checking availability:", error);
-      alert("There was an error checking availability. Please try again.");
+      console.error("Error submitting quote request:", error);
+      alert("There was an error submitting your request. Please try again or call us directly.");
     } finally {
       setIsSubmitting(false);
     }
@@ -289,7 +304,8 @@ export default function Schedule() {
       date: "",
       crewSize: "",
       yardAcreage: "",
-      notes: ""
+      notes: "",
+      leafHaul: false
     });
     setSelectedServiceType("");
     setSelectedTimeSlot("");
@@ -302,8 +318,8 @@ export default function Schedule() {
       <div className="schedule-page">
         <div className="schedule-container">
           <div className="schedule-header">
-            <h1>Schedule Your Service</h1>
-            <p>Fill out the form below to book your landscaping service. We'll contact you to confirm your appointment and process an $80 deposit to secure your booking.</p>
+            <h1>Request a Quote</h1>
+            <p>Fill out the form below to request a quote for your project. We'll review your requirements and get back to you with a detailed estimate.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="schedule-form">
@@ -349,61 +365,40 @@ export default function Schedule() {
                 />
                 {errors.phone && <span className="error-text">{errors.phone}</span>}
               </div>
+            </div>
 
-              <div className="form-group">
-                <label>Service Type * (choose one)</label>
-                
-                {/* Service Type Selection */}
-                <div className="service-type-selection">
-                  <div 
-                    className={`service-type-card ${selectedServiceType === 'hourly' ? 'selected' : ''}`}
-                    onClick={() => handleServiceTypeChange('hourly')}
-                  >
-                    <h4>Hourly Services</h4>
-                    <p>Simple tasks with set hourly rates</p>
-                    <ul>
-                      {hourlyServices.map((service, idx) => (
-                        <li key={idx}>{service}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div 
-                    className={`service-type-card ${selectedServiceType === 'estimate' ? 'selected' : ''}`}
-                    onClick={() => handleServiceTypeChange('estimate')}
-                  >
-                    <h4>Estimate Services</h4>
-                    <p>Complex tasks requiring assessment</p>
-                    <ul>
-                      {estimateServices.slice(0, 3).map((service, idx) => (
-                        <li key={idx}>{service}</li>
-                      ))}
-                      {estimateServices.length > 3 && <li>+ {estimateServices.length - 3} more...</li>}
-                    </ul>
-                  </div>
-                </div>
-                {errors.serviceType && <span className="error-text">{errors.serviceType}</span>}
-                
-                {/* Service Selection (shown only after type is selected) */}
-                {selectedServiceType && (
-                  <div className="selected-services-section">
-                    <label>Select Services * (choose from {selectedServiceType} services)</label>
-                    <div className="checkbox-group">
-                      {(selectedServiceType === 'hourly' ? hourlyServices : estimateServices).map((service, index) => (
-                        <label key={index} className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            value={service}
-                            checked={formData.services.includes(service)}
-                            onChange={handleServiceChange}
-                          />
-                          <span>{service}</span>
-                        </label>
-                      ))}
-                    </div>
-                    {errors.services && <span className="error-text">{errors.services}</span>}
-                  </div>
-                )}
+            <div className="form-group full-width">
+              <label>Select Services * (choose all that apply)</label>
+              <div className="checkbox-group">
+                {estimateServices.map((service, index) => (
+                  <label key={index} className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      value={service}
+                      checked={formData.services.includes(service)}
+                      onChange={handleServiceChange}
+                    />
+                    <span>{service}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.services && <span className="error-text">{errors.services}</span>}
+            </div>
+
+            {/* Leaf Haul Add-on */}
+            <div className="form-group full-width leaf-haul-section">
+              <div className="leaf-haul-checkbox">
+                <input
+                  type="checkbox"
+                  id="leafHaul"
+                  name="leafHaul"
+                  checked={formData.leafHaul}
+                  onChange={(e) => setFormData(prev => ({ ...prev, leafHaul: e.target.checked }))}
+                />
+                <label htmlFor="leafHaul" className="checkbox-label">
+                  <span className="checkbox-text">Leaves hauled away</span>
+                  <span className="addon-price">+$280</span>
+                </label>
               </div>
             </div>
 
@@ -421,57 +416,6 @@ export default function Schedule() {
               {errors.address && <span className="error-text">{errors.address}</span>}
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="date">Preferred Date *</label>
-                <input
-                  type="date"
-                  id="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  min={new Date().toISOString().split('T')[0]}
-                  className={errors.date ? "error" : ""}
-                />
-                {errors.date && <span className="error-text">{errors.date}</span>}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="timeSlot">Preferred Time *</label>
-                {formData.date ? (
-                  loadingTimeSlots ? (
-                    <div className="loading-time-slots">
-                      <p>Loading available times...</p>
-                    </div>
-                  ) : availableTimeSlots.length > 0 ? (
-                    <select
-                      id="timeSlot"
-                      name="timeSlot"
-                      value={selectedTimeSlot}
-                      onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                      className={errors.timeSlot ? "error" : ""}
-                    >
-                      <option value="">Select a time</option>
-                      {availableTimeSlots.map(slot => (
-                        <option key={slot.time} value={slot.time}>
-                          {slot.displayTime}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="no-time-slots">
-                      <p>No time slots available for this date</p>
-                    </div>
-                  )
-                ) : (
-                  <div className="select-date-first">
-                    <p>Please select a date first</p>
-                  </div>
-                )}
-                {errors.timeSlot && <span className="error-text">{errors.timeSlot}</span>}
-              </div>
-
-            </div>
 
             <div className="form-row">
               <div className="form-group">
@@ -489,26 +433,6 @@ export default function Schedule() {
               </div>
             </div>
 
-            {formData.services.length > 0 && (
-              <div className="form-group full-width">
-                <label htmlFor="crewSize">Crew Size & Hourly Rate *</label>
-                <select
-                  id="crewSize"
-                  name="crewSize"
-                  value={formData.crewSize}
-                  onChange={handleInputChange}
-                  className={errors.crewSize ? "error" : ""}
-                >
-                  <option value="">Select crew size</option>
-                  {crewSizes.map((crew, index) => (
-                    <option key={index} value={crew.value}>
-                      {crew.label} - {crew.rate}
-                    </option>
-                  ))}
-                </select>
-                {errors.crewSize && <span className="error-text">{errors.crewSize}</span>}
-              </div>
-            )}
 
             <div className="form-group full-width">
               <label htmlFor="notes">Additional Notes</label>
@@ -522,27 +446,18 @@ export default function Schedule() {
               />
             </div>
 
-            <div className="payment-info">
-              <h3>Payment Information</h3>
-              <p>An $80 deposit is required to secure your booking. After submitting this form, you'll be prompted to complete the secure payment using Square's payment system.</p>
+            <div className="quote-info">
+              <h3>What happens next?</h3>
+              <p>After submitting this form, we'll review your requirements and get back to you within 24 hours with a detailed quote for your project.</p>
             </div>
 
             <button type="submit" className="submit-button" disabled={isSubmitting}>
-              {isSubmitting ? 'Checking Availability...' : 'Continue to Payment'}
+              {isSubmitting ? 'Submitting Request...' : 'Request Quote'}
             </button>
           </form>
         </div>
       </div>
 
-      {/* Payment Modal */}
-      <PaymentBookingModal
-        isOpen={showPaymentModal}
-        onClose={handleClosePaymentModal}
-        selectedDate={selectedDate}
-        selectedTimeSlot={selectedTimeSlot}
-        onBookingChange={handleBookingChange}
-        preFilledData={formData}
-      />
     </div>
   );
 }
