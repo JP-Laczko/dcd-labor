@@ -421,6 +421,41 @@ export default function PaymentBookingModal({
       </div>
 
       <form className="booking-form">
+        <div className="form-group">
+          <label>Select Services *</label>
+          <div className="services-grid">
+            {hourlyServices.map(service => (
+              <div key={service} className="service-item">
+                <input
+                  type="checkbox"
+                  id={service}
+                  checked={formData.services.includes(service)}
+                  onChange={() => handleServiceChange(service)}
+                />
+                <label htmlFor={service}>{service}</label>
+              </div>
+            ))}
+          </div>
+          {errors.services && <span className="error-text">{errors.services}</span>}
+        </div>
+
+        {/* Yard Waste Removal Add-on */}
+        <div className="form-group leaf-haul-section">
+          <div className="leaf-haul-checkbox">
+            <input
+              type="checkbox"
+              id="leafHaul"
+              name="leafHaul"
+              checked={formData.leafHaul}
+              onChange={(e) => setFormData(prev => ({ ...prev, leafHaul: e.target.checked }))}
+            />
+            <label htmlFor="leafHaul" className="checkbox-label">
+              <span className="checkbox-text">Yard waste removal</span>
+              <span className="addon-price">+$280</span>
+            </label>
+          </div>
+        </div>
+
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="name">Full Name *</label>
@@ -504,42 +539,6 @@ export default function PaymentBookingModal({
           />
         </div>
 
-
-        <div className="form-group">
-          <label>Select Services *</label>
-          <div className="services-grid">
-            {hourlyServices.map(service => (
-              <div key={service} className="service-item">
-                <input
-                  type="checkbox"
-                  id={service}
-                  checked={formData.services.includes(service)}
-                  onChange={() => handleServiceChange(service)}
-                />
-                <label htmlFor={service}>{service}</label>
-              </div>
-            ))}
-          </div>
-          {errors.services && <span className="error-text">{errors.services}</span>}
-        </div>
-
-        {/* Leaf Haul Add-on */}
-        <div className="form-group leaf-haul-section">
-          <div className="leaf-haul-checkbox">
-            <input
-              type="checkbox"
-              id="leafHaul"
-              name="leafHaul"
-              checked={formData.leafHaul}
-              onChange={(e) => setFormData(prev => ({ ...prev, leafHaul: e.target.checked }))}
-            />
-            <label htmlFor="leafHaul" className="checkbox-label">
-              <span className="checkbox-text">Leaves hauled away</span>
-              <span className="addon-price">+$280</span>
-            </label>
-          </div>
-        </div>
-
         <div className="form-group">
           <label htmlFor="notes">Additional Notes</label>
           <textarea
@@ -554,7 +553,7 @@ export default function PaymentBookingModal({
 
         <div className="deposit-info">
           <h4>Payment Required</h4>
-          <p>A ${depositAmount} deposit is required to secure your booking{formData.leafHaul ? ', plus $280 for leaf haul service' : ''}. The deposit will be deducted from your final payment.</p>
+          <p>A ${depositAmount} deposit is required to secure your booking{formData.leafHaul ? ', plus $280 for yard waste removal service' : ''}. The deposit will be deducted from your final payment.</p>
         </div>
 
         {errors.submit && (
@@ -632,7 +631,7 @@ export default function PaymentBookingModal({
             </div>
             {formData.leafHaul && (
               <div className="summary-item leaf-haul-item">
-                <span>Leaf Haul:</span>
+                <span>Yard Waste Removal:</span>
                 <span>+$280</span>
               </div>
             )}
@@ -644,7 +643,7 @@ export default function PaymentBookingModal({
 
           <SquarePayment
             amount={depositAmount + (formData.leafHaul ? 280 : 0)}
-            description={`$${depositAmount + (formData.leafHaul ? 280 : 0)} ${formData.leafHaul ? 'deposit + leaf haul' : 'deposit'} for landscaping service on ${selectedDate.toLocaleDateString()}`}
+            description={`$${depositAmount + (formData.leafHaul ? 280 : 0)} ${formData.leafHaul ? 'deposit + yard waste removal' : 'deposit'} for landscaping service on ${selectedDate.toLocaleDateString()}`}
             customerInfo={{
               name: formData.name,
               email: formData.email,

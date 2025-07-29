@@ -196,7 +196,6 @@ export default function Schedule() {
     if (!formData.phone.trim()) newErrors.phone = "Phone is required";
     if (!formData.address.trim()) newErrors.address = "Address is required";
     if (formData.services.length === 0) newErrors.services = "Please select at least one service";
-    if (!formData.yardAcreage.trim()) newErrors.yardAcreage = "Yard acreage is required";
 
     // Email validation
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
@@ -385,22 +384,6 @@ export default function Schedule() {
               {errors.services && <span className="error-text">{errors.services}</span>}
             </div>
 
-            {/* Leaf Haul Add-on */}
-            <div className="form-group full-width leaf-haul-section">
-              <div className="leaf-haul-checkbox">
-                <input
-                  type="checkbox"
-                  id="leafHaul"
-                  name="leafHaul"
-                  checked={formData.leafHaul}
-                  onChange={(e) => setFormData(prev => ({ ...prev, leafHaul: e.target.checked }))}
-                />
-                <label htmlFor="leafHaul" className="checkbox-label">
-                  <span className="checkbox-text">Leaves hauled away</span>
-                  <span className="addon-price">+$280</span>
-                </label>
-              </div>
-            </div>
 
             <div className="form-group full-width">
               <label htmlFor="address">Service Address *</label>
@@ -417,21 +400,6 @@ export default function Schedule() {
             </div>
 
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="yardAcreage">Approximate Yard Acreage *</label>
-                <input
-                  type="text"
-                  id="yardAcreage"
-                  name="yardAcreage"
-                  value={formData.yardAcreage}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 0.5 acres, 1/4 acre"
-                  className={errors.yardAcreage ? "error" : ""}
-                />
-                {errors.yardAcreage && <span className="error-text">{errors.yardAcreage}</span>}
-              </div>
-            </div>
 
 
             <div className="form-group full-width">

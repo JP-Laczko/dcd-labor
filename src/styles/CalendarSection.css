@@ -1,14 +1,6 @@
 .calendar-section {
   padding: 60px 20px;
-  background: linear-gradient(135deg, 
-    #f8fafc 0%, 
-    #e2e8f0 15%, 
-    #cbd5e1 30%, 
-    #94a3b8 45%, 
-    #475569 60%, 
-    #334155 75%, 
-    #1e293b 90%, 
-    #0f172a 100%);
+  background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #cbd5e1 75%, #94a3b8 100%);
   margin: 40px auto;
   max-width: 900px;
   border-radius: 24px;
@@ -123,7 +115,7 @@
 }
 
 .nav-button {
-  background: linear-gradient(135deg, #4338ca 0%, #3730a3 50%, #312e81 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%);
   color: var(--white);
   border: none;
   width: 44px;
@@ -152,7 +144,7 @@
 }
 
 .nav-button:hover {
-  background: linear-gradient(135deg, #5b21b6 0%, #4338ca 50%, #3730a3 100%);
+  background: linear-gradient(135deg, #4b5563 0%, #374151 50%, #1f2937 100%);
   transform: scale(1.15) rotate(5deg);
   box-shadow: 0 8px 20px rgba(91, 33, 182, 0.4);
 }
@@ -307,11 +299,12 @@
 }
 
 .calendar-day.past {
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-  color: #9ca3af;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
+  color: #9ca3af !important;
   cursor: not-allowed;
-  border: 1px solid rgba(229, 231, 235, 0.5);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(229, 231, 235, 0.5) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  animation: none !important;
 }
 
 .calendar-day.clickable {
@@ -389,7 +382,7 @@
 }
 
 .legend-color.available {
-  background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%);
 }
 
 .legend-color.unavailable {
