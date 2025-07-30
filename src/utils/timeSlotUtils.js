@@ -14,51 +14,27 @@ export const generateDefaultTimeSlots = (date) => {
   
   let slots = [];
   
-  if (isAfterAugust25) {
-    // August 25+ rules: weekdays 3PM only, weekends 9AM and 1PM
-    if (isWeekend) {
-      slots = [
-        {
-          time: "09:00",
-          displayTime: "9AM",
-          isAvailable: true,
-          bookingId: null
-        },
-        {
-          time: "13:00", 
-          displayTime: "1PM",
-          isAvailable: true,
-          bookingId: null
-        }
-      ];
-    } else {
-      // Weekday - only 3PM
-      slots = [
-        {
-          time: "15:00",
-          displayTime: "3PM", 
-          isAvailable: true,
-          bookingId: null
-        }
-      ];
+  // Default time slots: 9AM, 1PM, 3PM for all days
+  slots = [
+    {
+      time: "09:00",
+      displayTime: "9AM",
+      isAvailable: true,
+      bookingId: null
+    },
+    {
+      time: "13:00",
+      displayTime: "1PM", 
+      isAvailable: true,
+      bookingId: null
+    },
+    {
+      time: "15:00",
+      displayTime: "3PM",
+      isAvailable: true,
+      bookingId: null
     }
-  } else {
-    // Before August 25: default 9AM and 1PM for all days
-    slots = [
-      {
-        time: "09:00",
-        displayTime: "9AM",
-        isAvailable: true,
-        bookingId: null
-      },
-      {
-        time: "13:00",
-        displayTime: "1PM", 
-        isAvailable: true,
-        bookingId: null
-      }
-    ];
-  }
+  ];
   
   return slots;
 };

@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import { Resend } from 'resend';
-import squareup from 'squareup';
+// Remove Square SDK - we'll use direct HTTP requests
 import { randomUUID } from 'crypto';
 import dotenv from 'dotenv';
 
@@ -23,17 +23,71 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 console.log('🔑 Resend API Key configured:', process.env.RESEND_API_KEY ? 'Yes' : 'No');
 console.log('📧 DCD Email configured:', process.env.DCD_EMAIL ? 'Yes' : 'No');
 
-// Initialize Square (only if we have credentials)
-let squareClient = null;
+// Square API Configuration
+const squareConfig = {
+  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+  baseUrl: process.env.NODE_ENV === 'production' 
+    ? 'https://connect.squareup.com' 
+    : 'https://connect.squareupsandbox.com',
+  locationId: process.env.SQUARE_LOCATION_ID
+};
+
+// Square API Helper Functions
+async function makeSquareRequest(endpoint, method = 'GET', body = null) {
+  const url = `${squareConfig.baseUrl}/v2${endpoint}`;
+  const options = {
+    method,
+    headers: {
+      'Authorization': `Bearer ${squareConfig.accessToken}`,
+      'Content-Type': 'application/json',
+      'Square-Version': '2023-10-18'
+    }
+  };
+
+  if (body) {
+    options.body = JSON.stringify(body);
+  }
+
+  console.log(`💳🔍 Making Square API request: ${method} ${url}`);
+  
+  const response = await fetch(url, options);
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error(`💳❌ Square API error: ${response.status}`, data);
+    const error = new Error(`Square API error: ${response.status}`);
+    error.squareErrors = data.errors;
+    error.statusCode = response.status;
+    throw error;
+  }
+
+  console.log(`💳✅ Square API success: ${response.status}`);
+  return data;
+}
+
+// Initialize and test Square connection
 if (process.env.SQUARE_ACCESS_TOKEN) {
+  console.log('💳 NODE_ENV:', process.env.NODE_ENV);
+  console.log('💳 Square base URL:', squareConfig.baseUrl);
+  console.log('💳 Access token length:', process.env.SQUARE_ACCESS_TOKEN?.length);
+  console.log('💳 Access token starts with:', process.env.SQUARE_ACCESS_TOKEN?.substring(0, 10) + '...');
+  
+  // Test the connection by fetching locations
   try {
-    squareClient = new squareup({
-      accessToken: process.env.SQUARE_ACCESS_TOKEN,
-      environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
-    });
-    console.log('💳 Square client initialized successfully');
+    const locations = await makeSquareRequest('/locations');
+    if (locations.locations && locations.locations.length > 0) {
+      console.log('💳 Available locations:', locations.locations.map(loc => `${loc.id}: ${loc.name}`));
+      console.log('💳 Using location ID:', process.env.SQUARE_LOCATION_ID);
+      const targetLocation = locations.locations.find(loc => loc.id === process.env.SQUARE_LOCATION_ID);
+      if (targetLocation) {
+        console.log('💳 ✅ Location ID matches available location:', targetLocation.name);
+      } else {
+        console.log('💳 ⚠️ Location ID not found in available locations!');
+      }
+    }
+    console.log('💳 Square API connection successful');
   } catch (error) {
-    console.error('💳 Square client initialization failed:', error.message);
+    console.error('💳 ⚠️ Square API connection test failed:', error.message);
   }
 } else {
   console.log('💳 Square credentials not provided - payment features disabled');
@@ -95,8 +149,6 @@ async function connectToMongo() {
     await client.connect();
     db = client.db(process.env.MONGODB_DB_NAME);
     console.log('✅ Connected to MongoDB successfully');
-    console.log('📊 Database name:', process.env.MONGODB_DB_NAME);
-    console.log('📊 Database configured:', process.env.MONGODB_DB_NAME ? 'Yes' : 'No');
     return true;
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
@@ -210,8 +262,6 @@ app.get('/api/calendar-availability', async (req, res) => {
     const collection = db.collection('calendar_availability');
     const documents = await collection.find({}).toArray();
     
-    console.log('📅 Calendar availability from MongoDB:', documents.length, 'documents');
-    
     // Transform MongoDB documents to expected format (support both old and new schema)
     const availability = documents.map(doc => {
       // Handle both old format {date, bookings} and new format {date, availability: {...}}
@@ -266,8 +316,6 @@ app.get('/api/calendar-availability', async (req, res) => {
           }
         }
       });
-      
-      console.log('📅 Processed', bookings.length, 'bookings to update time slot availability');
     } catch (bookingError) {
       console.error('⚠️ Error processing bookings for time slot availability:', bookingError);
       // Continue without booking integration if it fails
@@ -568,7 +616,7 @@ app.get('/api/bookings', async (req, res) => {
     
     const documents = await collection.find(filter).toArray();
     
-    console.log('📋 Bookings from MongoDB:', documents);
+    // console.log('📋 Bookings from MongoDB:', documents);
     
     res.json(documents);
   } catch (error) {
@@ -607,7 +655,7 @@ app.post('/api/bookings', async (req, res) => {
   }
 });
 
-// PUT /api/bookings/:id - Update existing booking
+// PUT /api/bookings/:id - Update existing booking with time slot management
 app.put('/api/bookings/:id', async (req, res) => {
   try {
     // Ensure database connection
@@ -616,9 +664,84 @@ app.put('/api/bookings/:id', async (req, res) => {
     }
     const { id } = req.params;
     const bookingData = req.body;
-    console.log('📋 PUT /api/bookings/:id - Updating booking ID:', id, 'for customer:', bookingData.customer?.name || 'unknown customer');
+    console.log('📋 PUT /api/bookings/:id - Updating booking ID:', id, 'for customer:', bookingData.customer?.name || bookingData.name || 'unknown customer');
     
     const collection = db.collection('bookings');
+    const calendarCollection = db.collection('calendar_availability');
+    
+    // First, get the existing booking to compare changes
+    const existingBooking = await collection.findOne({ bookingId: id });
+    if (!existingBooking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    // Extract old and new time slot information
+    const oldDate = existingBooking.service?.date instanceof Date 
+      ? existingBooking.service.date.toISOString().split('T')[0]
+      : existingBooking.service?.date;
+    const oldTimeSlot = existingBooking.service?.timeSlot;
+    
+    const newDate = bookingData.date;
+    const newTimeSlot = bookingData.timeSlot;
+    
+    console.log('📅 Time slot changes:', { oldDate, oldTimeSlot, newDate, newTimeSlot });
+    
+    // Handle time slot changes
+    const timeSlotChanged = oldDate !== newDate || oldTimeSlot !== newTimeSlot;
+    
+    if (timeSlotChanged) {
+      // Free up the old time slot if it exists
+      if (oldDate && oldTimeSlot) {
+        console.log('📅 Freeing old time slot:', { date: oldDate, timeSlot: oldTimeSlot });
+        const oldCalendarEntry = await calendarCollection.findOne({ date: oldDate });
+        
+        if (oldCalendarEntry && oldCalendarEntry.availability && oldCalendarEntry.availability.timeSlots) {
+          const updatedOldSlots = oldCalendarEntry.availability.timeSlots.map(slot => {
+            if (slot.time === oldTimeSlot) {
+              return { ...slot, isAvailable: true, bookingId: null };
+            }
+            return slot;
+          });
+          
+          await calendarCollection.updateOne(
+            { date: oldDate },
+            { 
+              $set: { 
+                'availability.timeSlots': updatedOldSlots,
+                updatedAt: new Date()
+              } 
+            }
+          );
+          console.log('📅 ✅ Freed old time slot');
+        }
+      }
+      
+      // Book the new time slot if it exists
+      if (newDate && newTimeSlot) {
+        console.log('📅 Booking new time slot:', { date: newDate, timeSlot: newTimeSlot });
+        const newCalendarEntry = await calendarCollection.findOne({ date: newDate });
+        
+        if (newCalendarEntry && newCalendarEntry.availability && newCalendarEntry.availability.timeSlots) {
+          const updatedNewSlots = newCalendarEntry.availability.timeSlots.map(slot => {
+            if (slot.time === newTimeSlot) {
+              return { ...slot, isAvailable: false, bookingId: id };
+            }
+            return slot;
+          });
+          
+          await calendarCollection.updateOne(
+            { date: newDate },
+            { 
+              $set: { 
+                'availability.timeSlots': updatedNewSlots,
+                updatedAt: new Date()
+              } 
+            }
+          );
+          console.log('📅 ✅ Booked new time slot');
+        }
+      }
+    }
     
     // Build the updated booking object
     const updatedBooking = {
@@ -629,18 +752,21 @@ app.put('/api/bookings/:id', async (req, res) => {
         address: bookingData.address
       },
       service: {
-        date: new Date(bookingData.date),
+        date: bookingData.date,
         crewSize: parseInt(bookingData.crewSize),
+        hourlyRate: bookingData.hourlyRate || existingBooking.service?.hourlyRate || 0,
         yardAcreage: bookingData.yardAcreage,
         services: bookingData.services,
         timeSlot: bookingData.timeSlot || '',
         displayTime: bookingData.displayTime || '',
-        serviceType: bookingData.serviceType || 'estimate',
-        notes: bookingData.notes || ''
+        serviceType: bookingData.serviceType || 'hourly',
+        notes: bookingData.notes || '',
+        leafHaul: bookingData.leafHaul !== undefined ? bookingData.leafHaul : existingBooking.service?.leafHaul || false
       },
       updatedAt: new Date()
     };
     
+    // Update the booking
     const result = await collection.updateOne(
       { bookingId: id },
       { $set: updatedBooking }
@@ -650,7 +776,7 @@ app.put('/api/bookings/:id', async (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
     
-    console.log('📋 Updated booking:', id);
+    console.log('📋 ✅ Updated booking:', id);
     res.json({ success: true, bookingId: id });
   } catch (error) {
     console.error('❌ Error updating booking:', error);
@@ -688,7 +814,10 @@ app.delete('/api/bookings/:id', async (req, res) => {
     if (booking.service && booking.service.date && booking.service.timeSlot) {
       try {
         const calendarCollection = db.collection('calendar_availability');
-        const dateString = booking.service.date;
+        // Handle both Date objects and string dates
+        const dateString = booking.service.date instanceof Date 
+          ? booking.service.date.toISOString().split('T')[0] 
+          : booking.service.date;
         const timeSlot = booking.service.timeSlot;
         
         console.log('📅 Freeing up time slot:', { date: dateString, timeSlot });
@@ -696,11 +825,18 @@ app.delete('/api/bookings/:id', async (req, res) => {
         // Find the calendar entry for this date
         const calendarEntry = await calendarCollection.findOne({ date: dateString });
         
+        console.log('📅 Calendar entry found:', {
+          found: !!calendarEntry,
+          hasAvailability: !!(calendarEntry?.availability),
+          hasTimeSlots: !!(calendarEntry?.availability?.timeSlots),
+          timeSlotsCount: calendarEntry?.availability?.timeSlots?.length || 0
+        });
+        
         if (calendarEntry && calendarEntry.availability && calendarEntry.availability.timeSlots) {
           // Find and update the specific time slot to make it available
           const timeSlots = calendarEntry.availability.timeSlots.map(slot => {
             if (slot.time === timeSlot) {
-              return { ...slot, isAvailable: true };
+              return { ...slot, isAvailable: true, bookingId: null };
             }
             return slot;
           });
@@ -742,15 +878,13 @@ app.get('/api/team-rates', async (req, res) => {
       await connectToMongo();
     }
     const collection = db.collection('team_rates');
-    console.log('🔍 Fetching team rates from team_rates collection...');
     const document = await collection.findOne({});
     
-    console.log('💰 Team rates document from MongoDB:', document);
+    // console.log('💰 Team rates document from MongoDB:', document);
     
     if (document) {
       // Remove MongoDB _id field from response
       const { _id, ...rates } = document;
-      console.log('💰 Returning stored team rates:', rates);
       res.json(rates);
     } else {
       // Return default rates if none found
@@ -2023,10 +2157,11 @@ async function generateGoogleReviewEmailPreview(bookingData, dcdEmail) {
 // POST /api/square/create-payment - Create payment with Square
 app.post('/api/square/create-payment', async (req, res) => {
   try {
-    const { sourceId, amount, currency = 'USD', description, customerInfo, saveCard, locationId } = req.body;
+    const { sourceId, cardTokenForSaving, amount, currency = 'USD', description, customerInfo, saveCard, locationId } = req.body;
     console.log('💳 POST /api/square/create-payment - Amount:', amount, 'Description:', description);
 
-    if (!squareClient) {
+    if (!squareConfig.accessToken) {
+      console.log('💳 Debug - Square access token not configured');
       return res.status(500).json({ error: 'Payment system not configured' });
     }
 
@@ -2034,60 +2169,142 @@ app.post('/api/square/create-payment', async (req, res) => {
       return res.status(400).json({ error: 'Invalid payment amount' });
     }
 
-    const { paymentsApi, customersApi } = squareClient;
     let customerId = null;
     let cardToken = null;
 
     // Create or find customer if saving card
     if (saveCard && customerInfo) {
       try {
+        // Clean up phone number - remove formatting and keep only digits
+        let cleanPhone = customerInfo.phone?.replace(/\D/g, '') || '';
+        
+        // Add +1 country code if needed (Square expects E.164 format)
+        if (cleanPhone.length === 10) {
+          cleanPhone = '+1' + cleanPhone;
+        } else if (cleanPhone.length === 11 && cleanPhone.startsWith('1')) {
+          cleanPhone = '+' + cleanPhone;
+        }
+        
         // Try to create customer
         const createCustomerRequest = {
-          givenName: customerInfo.name?.split(' ')[0] || '',
-          familyName: customerInfo.name?.split(' ').slice(1).join(' ') || '',
-          emailAddress: customerInfo.email,
-          phoneNumber: customerInfo.phone
+          given_name: customerInfo.name?.split(' ')[0] || '',
+          family_name: customerInfo.name?.split(' ').slice(1).join(' ') || '',
+          email_address: customerInfo.email
         };
-
-        const customerResponse = await customersApi.createCustomer(createCustomerRequest);
         
-        if (customerResponse.result.customer) {
-          customerId = customerResponse.result.customer.id;
-          console.log('💳 Created Square customer:', customerId);
+        // Only include phone if we have a valid format
+        if (cleanPhone.match(/^\+1\d{10}$/)) {
+          createCustomerRequest.phone_number = cleanPhone;
+          console.log('💳🔍 Using formatted phone:', cleanPhone);
+        } else {
+          console.log('💳🔍 Skipping invalid phone format:', customerInfo.phone);
+        }
+
+        console.log('💳🔍 Creating Square customer:', createCustomerRequest);
+        const customerResponse = await makeSquareRequest('/customers', 'POST', createCustomerRequest);
+        
+        if (customerResponse.customer) {
+          customerId = customerResponse.customer.id;
+          console.log('💳✅ Created Square customer:', customerId);
         }
       } catch (customerError) {
-        console.log('💳 Customer creation failed (may already exist):', customerError.message);
-        // Continue without customer creation
+        console.log('💳⚠️ Customer creation failed, trying to find existing customer by email...');
+        console.log('💳⚠️ Original error:', customerError.message);
+        
+        // Try to search for existing customer by email
+        try {
+          const searchResponse = await makeSquareRequest('/customers/search', 'POST', {
+            query: {
+              filter: {
+                email_address: {
+                  exact: customerInfo.email
+                }
+              }
+            }
+          });
+          
+          if (searchResponse.customers && searchResponse.customers.length > 0) {
+            customerId = searchResponse.customers[0].id;
+            console.log('💳✅ Found existing Square customer:', customerId);
+          } else {
+            console.log('💳⚠️ No existing customer found, will process payment without card saving');
+          }
+        } catch (searchError) {
+          console.log('💳⚠️ Customer search also failed:', searchError.message);
+          console.log('💳⚠️ Will process payment without card saving');
+        }
       }
     }
 
-    // Create payment
+    // Create payment with direct HTTP request
     const paymentRequest = {
-      sourceId,
-      idempotencyKey: randomUUID(),
-      amountMoney: {
-        amount: BigInt(amount),
-        currency
+      source_id: sourceId,
+      idempotency_key: randomUUID(),
+      amount_money: {
+        amount: parseInt(amount),
+        currency: currency
       },
-      locationId: locationId || process.env.SQUARE_LOCATION_ID,
+      location_id: locationId || squareConfig.locationId,
       note: description,
       autocomplete: true
     };
 
     // Add customer ID if we have one
     if (customerId) {
-      paymentRequest.customerId = customerId;
+      paymentRequest.customer_id = customerId;
     }
 
-    const paymentResponse = await paymentsApi.createPayment(paymentRequest);
-    
-    if (paymentResponse.result.payment) {
-      const payment = paymentResponse.result.payment;
-      console.log('💳 Created Square payment:', payment.id);
+    console.log('💳🔍 Payment request:', JSON.stringify(paymentRequest, null, 2));
 
-      // If card was saved and payment successful, get the card token
-      if (saveCard && customerId && payment.cardDetails) {
-        cardToken = payment.cardDetails.card?.cardId || payment.sourceId;
+    const paymentResponse = await makeSquareRequest('/payments', 'POST', paymentRequest);
+    
+    if (paymentResponse.payment) {
+      const payment = paymentResponse.payment;
+      console.log('💳✅ Created Square payment:', payment.id);
+
+      // Save card using separate token if provided
+      if (saveCard && customerId && cardTokenForSaving) {
+        console.log('💳🔍 Starting card saving process with separate token...');
+        console.log('💳🔍 Customer ID:', customerId);
+        console.log('💳🔍 Card saving token:', cardTokenForSaving);
+        
+        try {
+          const createCardRequest = {
+            source_id: cardTokenForSaving,
+            idempotency_key: randomUUID(),
+            card: {
+              customer_id: customerId
+            }
+          };
+          
+          console.log('💳🔍 Creating card with separate token...');
+          const cardResponse = await makeSquareRequest('/cards', 'POST', createCardRequest);
+          
+          if (cardResponse.card) {
+            cardToken = cardResponse.card.id;
+            console.log('💳✅ Successfully saved card with separate token!');
+            console.log('💳✅ Card ID:', cardToken);
+            console.log('💳✅ Card last 4:', cardResponse.card.last_4);
+            console.log('💳✅ Card brand:', cardResponse.card.card_brand);
+          } else {
+            console.log('💳❌ Card saving failed - no card in response');
+            cardToken = null;
+          }
+        } catch (cardError) {
+          console.error('💳❌ Failed to save card with separate token:', cardError.message);
+          if (cardError.squareErrors) {
+            console.error('💳❌ Square API errors:', JSON.stringify(cardError.squareErrors, null, 2));
+          }
+          cardToken = null;
+          // Don't fail the payment, just log the card saving failure
+        }
+      } else {
+        console.log('💳🔍 Skipping card saving:', {
+          saveCard: saveCard,
+          customerId: !!customerId,
+          hasCardToken: !!cardTokenForSaving
+        });
+        cardToken = null;
       }
 
       res.json({
@@ -2095,8 +2312,8 @@ app.post('/api/square/create-payment', async (req, res) => {
         payment: {
           id: payment.id,
           status: payment.status,
-          amountMoney: payment.amountMoney,
-          createdAt: payment.createdAt
+          amount_money: payment.amount_money,
+          created_at: payment.created_at
         },
         customerId,
         cardToken
@@ -2106,10 +2323,13 @@ app.post('/api/square/create-payment', async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Error creating Square payment:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', JSON.stringify(error, null, 2));
     
     let errorMessage = 'Payment processing failed';
     if (error.errors && error.errors.length > 0) {
       errorMessage = error.errors[0].detail || errorMessage;
+      console.error('❌ Square API errors:', error.errors);
     } else if (error.message) {
       errorMessage = error.message;
     }
@@ -2122,73 +2342,123 @@ app.post('/api/square/create-payment', async (req, res) => {
 app.post('/api/square/charge-card-on-file', async (req, res) => {
   try {
     const { customerId, amount, currency = 'USD', description, locationId } = req.body;
-    console.log('💳 POST /api/square/charge-card-on-file - Customer:', customerId, 'Amount:', amount);
+    
+    console.log('🎯🎯🎯 CHARGE CARD ON FILE REQUEST RECEIVED 🎯🎯🎯');
+    console.log('🎯 Timestamp:', new Date().toISOString());
+    console.log('🎯 Request Body:', JSON.stringify(req.body, null, 2));
+    console.log('🎯 Customer ID:', customerId);
+    console.log('🎯 Amount (cents):', amount);
+    console.log('🎯 Amount (dollars):', amount ? (amount / 100).toFixed(2) : 'N/A');
+    console.log('🎯 Currency:', currency);
+    console.log('🎯 Description:', description);
+    console.log('🎯 Location ID:', locationId);
+    console.log('🎯 Square Config Available:', {
+      hasAccessToken: !!squareConfig.accessToken,
+      tokenLength: squareConfig.accessToken ? squareConfig.accessToken.length : 0,
+      baseUrl: squareConfig.baseUrl,
+      locationId: squareConfig.locationId
+    });
 
-    if (!squareClient) {
+    if (!squareConfig.accessToken) {
+      console.log('🎯❌ Square access token not configured');
       return res.status(500).json({ error: 'Payment system not configured' });
     }
 
     if (!customerId) {
+      console.log('🎯❌ Customer ID is missing from request');
       return res.status(400).json({ error: 'Customer ID is required' });
     }
 
     if (!amount || amount < 100) { // Minimum $1.00 in cents
+      console.log('🎯❌ Invalid amount:', amount, '(minimum 100 cents = $1.00)');
       return res.status(400).json({ error: 'Invalid payment amount' });
     }
 
-    const { paymentsApi, customersApi } = squareClient;
-
-    // Get customer's cards
-    const customerResponse = await customersApi.retrieveCustomer(customerId);
+    // Get customer to verify they exist and check for stored payment methods
+    console.log('💳🔍 Retrieving customer information...');
+    console.log('💳🔍 Customer ID:', customerId);
     
-    if (!customerResponse.result.customer || !customerResponse.result.customer.cards || customerResponse.result.customer.cards.length === 0) {
-      return res.status(400).json({ error: 'No saved card found for customer' });
+    const customerResponse = await makeSquareRequest(`/customers/${customerId}`);
+    
+    if (!customerResponse.customer) {
+      console.log('💳❌ Customer not found in response');
+      return res.status(400).json({ error: 'Customer not found' });
+    }
+    
+    const customer = customerResponse.customer;
+    console.log('💳🔍 Customer found - ID:', customer.id);
+    console.log('💳🔍 Customer has cards:', customer.cards ? customer.cards.length : 0);
+    
+    // Check if customer has any saved cards
+    if (!customer.cards || customer.cards.length === 0) {
+      console.log('💳❌ No stored payment methods found for customer');
+      console.log('💳❌ Customer has no cards saved - cannot charge automatically');
+      
+      // Without a saved payment method, we cannot charge the customer
+      // Square requires a source_id (card ID, card nonce, or other payment method)
+      return res.status(400).json({ 
+        error: 'Manual collection required',
+        message: 'No stored card available. Payment must be collected manually.',
+        details: 'Customer exists but has no saved payment methods. A new card payment is required.'
+      });
     }
 
     // Use the first (most recent) card
-    const card = customerResponse.result.customer.cards[0];
+    const card = customer.cards[0];
+    console.log('💳🔍 Using saved card for charge:');
+    console.log('💳🔍 Card ID:', card.id);
+    console.log('💳🔍 Card last 4:', card.last_4);
+    console.log('💳🔍 Card brand:', card.card_brand);
+    console.log('💳🔍 Card exp:', card.exp_month + '/' + card.exp_year);
 
-    // Create payment with stored card
-    const paymentRequest = {
-      sourceId: card.id,
-      idempotencyKey: randomUUID(),
-      amountMoney: {
-        amount: BigInt(amount),
-        currency
+    // Create payment with stored card using direct API request
+    const createPaymentRequest = {
+      source_id: card.id,
+      idempotency_key: randomUUID(),
+      amount_money: {
+        amount: parseInt(amount),
+        currency: currency
       },
-      locationId: locationId || process.env.SQUARE_LOCATION_ID,
+      location_id: locationId || squareConfig.locationId,
       note: description,
-      customerId,
+      customer_id: customerId,
       autocomplete: true
     };
 
-    const paymentResponse = await paymentsApi.createPayment(paymentRequest);
-    
-    if (paymentResponse.result.payment) {
-      const payment = paymentResponse.result.payment;
-      console.log('💳 Charged card on file:', payment.id);
+    console.log('💳🔍 Creating payment with saved card...');
+    console.log('💳🔍 Payment request:', JSON.stringify(createPaymentRequest, null, 2));
 
-      res.json({
+    const paymentResponse = await makeSquareRequest('/payments', 'POST', createPaymentRequest);
+    
+    console.log('💳🔍 Payment response:', JSON.stringify(paymentResponse, null, 2));
+    
+    if (paymentResponse.payment) {
+      const payment = paymentResponse.payment;
+      console.log('💳✅ Successfully charged saved card!');
+      console.log('💳✅ Payment ID:', payment.id);
+      console.log('💳✅ Payment status:', payment.status);
+      console.log('💳✅ Amount charged:', (payment.amount_money.amount / 100) + ' ' + payment.amount_money.currency);
+
+      return res.json({
         success: true,
         payment: {
           id: payment.id,
           status: payment.status,
-          amountMoney: payment.amountMoney,
-          createdAt: payment.createdAt
+          amount_money: payment.amount_money,
+          created_at: payment.created_at
         }
       });
     } else {
+      console.log('💳❌ Payment failed - no payment in response');
+      console.log('💳❌ Full response:', JSON.stringify(paymentResponse, null, 2));
       throw new Error('Payment failed');
     }
   } catch (error) {
-    console.error('❌ Error charging card on file:', error);
-    
-    let errorMessage = 'Failed to charge saved card';
-    if (error.errors && error.errors.length > 0) {
-      errorMessage = error.errors[0].detail || errorMessage;
-    }
-    
-    res.status(500).json({ error: errorMessage });
+    console.error('❌ Error in charge-card-on-file endpoint:', error);
+    res.status(500).json({ 
+      error: 'Manual collection required',
+      message: 'No stored card available. Payment must be collected manually.'
+    });
   }
 });
 
@@ -2210,15 +2480,30 @@ app.post('/api/create-booking-with-payment', async (req, res) => {
     const serviceDate = new Date(bookingData.service.date);
     const dateString = serviceDate.toISOString().split('T')[0];
     
+    console.log('🗓️ Checking calendar availability for booking:', {
+      originalDate: bookingData.service.date,
+      serviceDate: serviceDate,
+      dateString: dateString,
+      customerName: bookingData.customer.name
+    });
+    
     // Get calendar availability for the date
-    const calendarCollection = db.collection('calendar');
+    const calendarCollection = db.collection('calendar_availability');
     const availabilityDoc = await calendarCollection.findOne({ date: dateString });
     const allowedBookings = availabilityDoc?.bookings || 0;
     
+    console.log('🗓️ Calendar availability result:', {
+      dateString: dateString,
+      foundDoc: !!availabilityDoc,
+      allowedBookings: allowedBookings,
+      fullDoc: availabilityDoc
+    });
+    
     if (allowedBookings === 0) {
       console.log('🚫 Booking blocked: Date not available in calendar');
+      console.log('🚫 Need to set availability for this date in admin calendar');
       return res.status(400).json({ 
-        error: 'This date is not available for booking',
+        error: 'This date is not available for booking. Please contact admin to set availability for this date.',
         refundNeeded: true 
       });
     }

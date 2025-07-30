@@ -1,10 +1,15 @@
 .admin-container {
   min-height: 100vh;
   background-color: #f8f9fa;
-  padding: 20px;
+  padding: 0;
+  margin: 0;
   max-width: 100vw;
   overflow-x: hidden;
   box-sizing: border-box;
+  position: relative;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 /* Test Booking Commands Section */
@@ -264,7 +269,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin: 20px 20px 10px 20px;
   padding: 20px;
   background: white;
   border-radius: 10px;
@@ -297,7 +302,7 @@
   max-width: 100vw;
   width: 100%;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 20px;
   box-sizing: border-box;
 }
 
@@ -335,15 +340,7 @@
   border: 1px solid #e0e0e0;
 }
 
-.day-header {
-  background-color: #f8f9fa;
-  color: #333;
-  padding: 10px;
-  text-align: center;
-  font-weight: bold;
-  font-size: 14px;
-  border-bottom: 1px solid #e0e0e0;
-}
+/* day-header removed */
 
 .calendar-day {
   background-color: white;
@@ -484,12 +481,14 @@
 
 @media (max-width: 768px) {
   .admin-container {
-    padding: 8px;
+    padding: 0;
+    margin: 0;
     max-width: 100vw;
     overflow-x: hidden;
   }
   
   .admin-header {
+    margin: 10px 10px 5px 10px;
     padding: 12px;
     flex-direction: column;
     gap: 8px;
@@ -506,6 +505,7 @@
     grid-template-columns: 1fr;
     gap: 15px;
     max-width: 100%;
+    padding: 10px;
   }
   
   .calendar-section,
@@ -539,14 +539,7 @@
     min-width: 100%;
   }
   
-  .day-header {
-    padding: 8px 4px;
-    font-size: 12px;
-    text-align: center;
-    word-break: break-word;
-    min-width: 0;
-    font-weight: bold;
-  }
+  /* day-header removed */
   
   .calendar-day {
     min-height: 120px;
@@ -581,24 +574,13 @@
     z-index: 10;
   }
   
-  .calendar-day .day-header {
-    padding: 0;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 2px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: absolute;
-    top: 22px;
-    left: 3px;
-    right: 3px;
-    z-index: 9;
-  }
+  /* calendar-day .day-header removed */
   
   .slots-available {
     font-size: 7px;
     padding: 2px 4px;
-    background: #e8f5e8;
+    background: #22c55e;
+    color: white;
     border-radius: 6px;
     text-align: center;
     width: 100%;
@@ -733,15 +715,14 @@
       margin-top: 38px !important; /* Reduced space for iPhone Safari */
     }
     
-    .calendar-day .day-header {
-      top: 22px; /* Consistent positioning for iPhone Safari */
-    }
+    /* calendar-day .day-header removed */
   }
 }
 
 @media (max-width: 480px) {
   .admin-container {
-    padding: 5px;
+    padding: 0;
+    margin: 0;
   }
   
   .admin-header h1 {
@@ -767,10 +748,7 @@
     font-size: 14px;
   }
   
-  .day-header {
-    font-size: 10px;
-    padding: 6px 2px;
-  }
+  /* day-header removed */
   
   .calendar-day {
     min-height: 100px;
@@ -787,7 +765,8 @@
   .slots-available {
     font-size: 8px;
     padding: 2px 3px;
-    background: #e8f5e8;
+    background: #22c55e;
+    color: white;
     border-radius: 6px;
     white-space: nowrap;
   }
@@ -816,20 +795,7 @@
   }
 }
 
-/* Enhanced calendar booking display */
-.day-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #eee;
-  min-height: 20px;
-  position: absolute;
-  top: 22px;
-  left: 0;
-  right: 0;
-  z-index: 9;
-}
+/* Enhanced calendar booking display - day-header removed */
 
 .slots-available {
   font-size: 10px;
@@ -842,6 +808,10 @@
   flex-direction: column;
   align-items: center;
   line-height: 1;
+  position: absolute;
+  top: 22px;
+  right: 3px;
+  z-index: 9;
 }
 
 .crew-label {
@@ -860,7 +830,7 @@
   flex: 1;
   overflow-y: auto;
   margin-bottom: 8px;
-  margin-top: 45px; /* Reduced space between crew count and bookings */
+  margin-top: 25px; /* Reduced since we removed day-header */
   padding-top: 4px;
 }
 

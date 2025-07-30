@@ -31,6 +31,17 @@ export default function PaymentBookingModal({
   });
 
   const [rates, setRates] = useState({});
+  
+  // Calculate hourly rate based on crew size and current rates
+  const calculateHourlyRate = (crewSize) => {
+    const crewSizeMap = {
+      2: 'twoMan',
+      3: 'threeMan', 
+      4: 'fourMan'
+    };
+    const crewSizeKey = crewSizeMap[crewSize];
+    return rates[crewSizeKey] || 0;
+  };
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentResult, setPaymentResult] = useState(null);
@@ -38,7 +49,7 @@ export default function PaymentBookingModal({
 
   // Hourly Services (simple tasks)
   const hourlyServices = [
-    "Leaf Removal",
+    "Leaf Cleanup",
     "Weeding"
   ];
 
@@ -123,6 +134,20 @@ export default function PaymentBookingModal({
     }
   }, [step, selectedDate]);
 
+  // Prevent body scroll and shaking when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [isOpen]);
+
   const checkAvailability = async () => {
     setAvailabilityCheck({ checking: true, available: true, error: null });
     
@@ -130,8 +155,17 @@ export default function PaymentBookingModal({
       const dateString = selectedDate.toISOString().split('T')[0];
       const today = new Date().toISOString().split('T')[0];
       
+      console.log('🗓️ Checking availability for:', {
+        selectedDate: selectedDate,
+        dateString: dateString,
+        today: today,
+        month: selectedDate.getMonth() + 1, // 1-based month
+        isAugust: selectedDate.getMonth() === 7 // August is month 7 (0-based)
+      });
+      
       // FIRST CHECK: Block same-day booking
       if (dateString === today) {
+        console.log('🗓️❌ Blocked: Same-day booking');
         setAvailabilityCheck({ 
           checking: false, 
           available: false, 
@@ -144,21 +178,57 @@ export default function PaymentBookingModal({
       const availabilityResult = await mongoService.getAllCalendarAvailability();
       const bookingsResult = await mongoService.getBookings();
       
+      console.log('🗓️ Raw availability result:', {
+        success: availabilityResult.success,
+        availabilityCount: availabilityResult.availability?.length || 0,
+        allDates: availabilityResult.availability?.map(entry => ({
+          date: entry.date,
+          bookings: entry.bookings,
+          isAugust: entry.date?.startsWith('2024-08') || entry.date?.startsWith('2025-08')
+        })) || []
+      });
+      
       if (!availabilityResult.success || !bookingsResult.success) {
+        console.log('🗓️❌ Failed to get availability or bookings data');
         throw new Error('Failed to check availability');
       }
 
       // Calculate availability for the selected date
-      const allowedBookings = availabilityResult.availability
-        .find(entry => entry.date === dateString)?.bookings || 0;
+      const calendarEntry = availabilityResult.availability
+        .find(entry => entry.date === dateString);
+      const allowedBookings = calendarEntry?.bookings || 0;
+      
+      console.log('🗓️ Calendar entry for date:', {
+        dateString: dateString,
+        calendarEntry: calendarEntry,
+        allowedBookings: allowedBookings,
+        foundInCalendar: !!calendarEntry
+      });
       
       const existingBookings = bookingsResult.bookings
         .filter(booking => {
           const bookingDate = new Date(booking.service?.date || booking.date);
-          return bookingDate.toISOString().split('T')[0] === dateString;
+          const bookingDateString = bookingDate.toISOString().split('T')[0];
+          const matches = bookingDateString === dateString;
+          if (matches) {
+            console.log('🗓️ Found existing booking for this date:', {
+              bookingId: booking.bookingId,
+              customerName: booking.customer?.name,
+              bookingDate: bookingDateString
+            });
+          }
+          return matches;
         }).length;
 
       const slotsRemaining = allowedBookings - existingBookings;
+      
+      console.log('🗓️ Availability calculation:', {
+        dateString: dateString,
+        allowedBookings: allowedBookings,
+        existingBookings: existingBookings,
+        slotsRemaining: slotsRemaining,
+        available: slotsRemaining > 0
+      });
       
       if (slotsRemaining <= 0) {
         setAvailabilityCheck({ 
@@ -226,30 +296,62 @@ export default function PaymentBookingModal({
 
   const handleContinueToPayment = async () => {
     if (validateForm()) {
-      // TESTING MODE: Skip payment and create booking directly
-      setIsSubmitting(true);
-      
-      try {
-        const bookingData = {
-          ...formData,
+      setStep(2);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentData) => {
+    setIsSubmitting(true);
+    
+    try {
+      const bookingData = {
+        customer: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address
+        },
+        service: {
           date: selectedDate.toISOString().split('T')[0],
           timeSlot: formData.timeSlot || selectedTimeSlot,
           displayTime: formData.displayTime || (selectedTimeSlot ? timeSlotUtils.formatTimeForDisplay(selectedTimeSlot) : ''),
-          crewSize: parseInt(formData.crewSize)
-        };
+          serviceType: formData.serviceType || 'hourly',
+          crewSize: parseInt(formData.crewSize),
+          hourlyRate: calculateHourlyRate(parseInt(formData.crewSize)),
+          yardAcreage: formData.yardAcreage,
+          services: formData.services,
+          notes: formData.notes,
+          leafHaul: formData.leafHaul
+        }
+      };
 
-        // Create booking without payment
-        const result = await mongoService.createBooking(bookingData);
+      // Create booking with payment confirmation using the payment-aware endpoint
+      const response = await fetch('/api/create-booking-with-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingData,
+          paymentInfo: paymentData
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Send confirmation emails
+        await emailService.sendBookingConfirmation(bookingData);
         
-        if (result.success) {
-          // Send confirmation emails
-          await emailService.sendBookingConfirmation(bookingData);
-          
-          // Set success result and go to confirmation
-          setPaymentResult({
+        // Set success result and go to confirmation
+        setPaymentResult({
             success: true,
-            bookingId: result.bookingId || 'TEST-' + Date.now(),
-            paymentInfo: { amount: 80 } // Mock payment info
+            bookingId: result.bookingId,
+            paymentInfo: paymentData
           });
           setStep(3);
           onBookingChange();
@@ -270,96 +372,6 @@ export default function PaymentBookingModal({
       } finally {
         setIsSubmitting(false);
       }
-      
-      // Original payment flow (commented out for testing)
-      // setStep(2);
-    }
-  };
-
-  const handlePaymentSuccess = async (paymentInfo) => {
-    setIsSubmitting(true);
-    
-    try {
-      // Structure booking data
-      const bookingData = {
-        customer: {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          address: formData.address
-        },
-        service: {
-          date: selectedDate,
-          crewSize: parseInt(formData.crewSize),
-          yardAcreage: formData.yardAcreage,
-          services: formData.services,
-          notes: formData.notes,
-          hourlyRate: rates[`${formData.crewSize}Man`] || 0
-        }
-      };
-
-      // Create booking with payment verification
-      const result = await fetch('/api/create-booking-with-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bookingData,
-          paymentInfo: {
-            paymentId: paymentInfo.paymentId,
-            amount: paymentInfo.amount,
-            currency: paymentInfo.currency,
-            customerId: paymentInfo.customerId,
-            cardToken: paymentInfo.cardToken
-          }
-        }),
-      });
-
-      if (!result.ok) {
-        throw new Error(`HTTP error! status: ${result.status}`);
-      }
-
-      const response = await result.json();
-
-      if (response.success) {
-        setPaymentResult({
-          success: true,
-          bookingId: response.bookingId,
-          paymentInfo
-        });
-        setStep(3);
-        
-        // Update calendar availability
-        onBookingChange();
-      } else {
-        // Handle availability-specific errors
-        if (response.refundNeeded) {
-          setPaymentResult({
-            success: false,
-            error: response.error,
-            refundNeeded: true,
-            isAvailabilityError: true
-          });
-        } else {
-          setPaymentResult({
-            success: false,
-            error: response.error || 'Failed to create booking'
-          });
-        }
-        setStep(3);
-        return;
-      }
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      setPaymentResult({
-        success: false,
-        error: error.message || 'Failed to create booking after payment'
-      });
-      setStep(3);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handlePaymentError = (error) => {
@@ -425,35 +437,39 @@ export default function PaymentBookingModal({
           <label>Select Services *</label>
           <div className="services-grid">
             {hourlyServices.map(service => (
-              <div key={service} className="service-item">
-                <input
-                  type="checkbox"
-                  id={service}
-                  checked={formData.services.includes(service)}
-                  onChange={() => handleServiceChange(service)}
-                />
-                <label htmlFor={service}>{service}</label>
+              <div key={service} className="leaf-haul-section">
+                <div className="leaf-haul-checkbox">
+                  <input
+                    type="checkbox"
+                    id={service}
+                    checked={formData.services.includes(service)}
+                    onChange={() => handleServiceChange(service)}
+                  />
+                  <label htmlFor={service} className="checkbox-label">
+                    <span className="checkbox-text">{service}</span>
+                  </label>
+                </div>
               </div>
             ))}
+            
+            {/* Yard Waste Removal */}
+            <div className="leaf-haul-section">
+              <div className="leaf-haul-checkbox">
+                <input
+                  type="checkbox"
+                  id="leafHaul"
+                  name="leafHaul"
+                  checked={formData.leafHaul}
+                  onChange={(e) => setFormData(prev => ({ ...prev, leafHaul: e.target.checked }))}
+                />
+                <label htmlFor="leafHaul" className="checkbox-label">
+                  <span className="checkbox-text">Yard waste removal</span>
+                  <span className="addon-price">+$280</span>
+                </label>
+              </div>
+            </div>
           </div>
           {errors.services && <span className="error-text">{errors.services}</span>}
-        </div>
-
-        {/* Yard Waste Removal Add-on */}
-        <div className="form-group leaf-haul-section">
-          <div className="leaf-haul-checkbox">
-            <input
-              type="checkbox"
-              id="leafHaul"
-              name="leafHaul"
-              checked={formData.leafHaul}
-              onChange={(e) => setFormData(prev => ({ ...prev, leafHaul: e.target.checked }))}
-            />
-            <label htmlFor="leafHaul" className="checkbox-label">
-              <span className="checkbox-text">Yard waste removal</span>
-              <span className="addon-price">+$280</span>
-            </label>
-          </div>
         </div>
 
         <div className="form-row">
@@ -553,7 +569,7 @@ export default function PaymentBookingModal({
 
         <div className="deposit-info">
           <h4>Payment Required</h4>
-          <p>A ${depositAmount} deposit is required to secure your booking{formData.leafHaul ? ', plus $280 for yard waste removal service' : ''}. The deposit will be deducted from your final payment.</p>
+          <p>A ${depositAmount} deposit is required to secure your booking. The deposit will be deducted from your final payment{formData.leafHaul ? '. Yard waste removal ($280) will be charged with the final payment' : ''}.</p>
         </div>
 
         {errors.submit && (
@@ -570,7 +586,7 @@ export default function PaymentBookingModal({
             className="submit-button"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Creating Booking...' : 'Create Booking (Testing Mode)'}
+            {isSubmitting ? 'Processing...' : 'Continue to Payment'}
           </button>
         </div>
       </form>
@@ -590,10 +606,10 @@ export default function PaymentBookingModal({
           <h3>Date No Longer Available</h3>
           <p>{availabilityCheck.error}</p>
           <button 
-            onClick={preFilledData ? onClose : handleBackToForm} 
+            onClick={handleClose} 
             className="back-button"
           >
-            {preFilledData ? 'Back to Schedule' : 'Select Different Date'}
+            Select Different Date
           </button>
         </div>
       ) : (
@@ -635,15 +651,25 @@ export default function PaymentBookingModal({
                 <span>+$280</span>
               </div>
             )}
-            <div className="summary-item total-item">
-              <span><strong>Deposit Required:</strong></span>
-              <span><strong>${depositAmount + (formData.leafHaul ? 280 : 0)}</strong></span>
+            <div className="summary-item">
+              <span>Deposit:</span>
+              <span>${depositAmount}</span>
             </div>
+            <div className="summary-item total-item">
+              <span><strong>Deposit Payment:</strong></span>
+              <span><strong>${depositAmount}</strong></span>
+            </div>
+            {formData.leafHaul && (
+              <div className="summary-note">
+                <small>* Yard waste removal ($280) will be charged with final payment</small>
+              </div>
+            )}
           </div>
 
-          <SquarePayment
-            amount={depositAmount + (formData.leafHaul ? 280 : 0)}
-            description={`$${depositAmount + (formData.leafHaul ? 280 : 0)} ${formData.leafHaul ? 'deposit + yard waste removal' : 'deposit'} for landscaping service on ${selectedDate.toLocaleDateString()}`}
+          <div className="payment-section">
+            <SquarePayment
+            amount={depositAmount}
+            description={`$${depositAmount} deposit for landscaping service on ${selectedDate.toLocaleDateString()}`}
             customerInfo={{
               name: formData.name,
               email: formData.email,
@@ -655,6 +681,7 @@ export default function PaymentBookingModal({
             isProcessing={isSubmitting}
             saveCard={true}
           />
+          </div>
         </>
       )}
     </div>
@@ -670,7 +697,7 @@ export default function PaymentBookingModal({
           </div>
           
           <div className="confirmation-details">
-            <p>Your booking has been successfully created. <strong>Note: This is testing mode - no payment was processed.</strong></p>
+            <p>Your booking has been successfully created and your payment has been processed.</p>
             
             <div className="booking-info">
               <div className="info-item">
@@ -685,7 +712,7 @@ export default function PaymentBookingModal({
                 })}
               </div>
               <div className="info-item">
-                <strong>Deposit:</strong> $80 (Not charged - Testing Mode)
+                <strong>Deposit Paid:</strong> ${paymentResult.paymentInfo?.amount || 80}
               </div>
             </div>
 
@@ -693,7 +720,7 @@ export default function PaymentBookingModal({
               <h4>What's Next?</h4>
               <ul>
                 <li>A confirmation email has been sent to {formData.email}</li>
-                <li><strong>Testing Mode:</strong> Email service functionality is being tested</li>
+                <li><strong>Payment:</strong> Your deposit has been successfully charged</li>
                 <li>In production: We would text you within 24 hours to confirm appointment time</li>
               </ul>
             </div>

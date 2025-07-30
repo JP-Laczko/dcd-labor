@@ -77,7 +77,7 @@ export default function AdminCalendarTimeSlots() {
       const timeSlots = new Map();
       const today = new Date();
       
-      // Initialize next 2 weeks with default time slots
+      // Initialize next 2 weeks with default time slots (including today for admin view)
       for (let i = 0; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
@@ -261,37 +261,56 @@ export default function AdminCalendarTimeSlots() {
     }
   };
 
-  // Quick Fill Week functionality
-  const quickFillWeekdays = () => {
-    // Clear existing slots and add default weekday slots (3PM only based on CEO requirements)
-    const weekdaySlots = [
-      {
-        time: "15:00",
-        displayTime: "3PM",
-        isAvailable: true,
-        bookingId: null
-      }
-    ];
-    setEditingTimeSlots(weekdaySlots);
+  // Quick Add individual time slot functionality
+  const quickAdd9AM = () => {
+    const slot9AM = {
+      time: "09:00",
+      displayTime: "9AM",
+      isAvailable: true,
+      bookingId: null
+    };
+    
+    // Check if 9AM slot already exists
+    const existingSlotIndex = editingTimeSlots.findIndex(slot => slot.time === "09:00");
+    if (existingSlotIndex === -1) {
+      // Add new slot and sort by time
+      const newSlots = [...editingTimeSlots, slot9AM];
+      setEditingTimeSlots(timeSlotUtils.sortTimeSlots(newSlots));
+    }
   };
 
-  const quickFillWeekends = () => {
-    // Clear existing slots and add default weekend slots (9AM & 1PM based on CEO requirements) 
-    const weekendSlots = [
-      {
-        time: "09:00", 
-        displayTime: "9AM",
-        isAvailable: true,
-        bookingId: null
-      },
-      {
-        time: "13:00",
-        displayTime: "1PM", 
-        isAvailable: true,
-        bookingId: null
-      }
-    ];
-    setEditingTimeSlots(weekendSlots);
+  const quickAdd1PM = () => {
+    const slot1PM = {
+      time: "13:00",
+      displayTime: "1PM",
+      isAvailable: true,
+      bookingId: null
+    };
+    
+    // Check if 1PM slot already exists
+    const existingSlotIndex = editingTimeSlots.findIndex(slot => slot.time === "13:00");
+    if (existingSlotIndex === -1) {
+      // Add new slot and sort by time
+      const newSlots = [...editingTimeSlots, slot1PM];
+      setEditingTimeSlots(timeSlotUtils.sortTimeSlots(newSlots));
+    }
+  };
+
+  const quickAdd3PM = () => {
+    const slot3PM = {
+      time: "15:00",
+      displayTime: "3PM",
+      isAvailable: true,
+      bookingId: null
+    };
+    
+    // Check if 3PM slot already exists
+    const existingSlotIndex = editingTimeSlots.findIndex(slot => slot.time === "15:00");
+    if (existingSlotIndex === -1) {
+      // Add new slot and sort by time
+      const newSlots = [...editingTimeSlots, slot3PM];
+      setEditingTimeSlots(timeSlotUtils.sortTimeSlots(newSlots));
+    }
   };
 
   const getDaysInMonth = (date) => {
@@ -373,13 +392,6 @@ export default function AdminCalendarTimeSlots() {
           </button>
         </div>
         <div className="calendar-grid">
-          <div className="day-header">Sun</div>
-          <div className="day-header">Mon</div>
-          <div className="day-header">Tue</div>
-          <div className="day-header">Wed</div>
-          <div className="day-header">Thu</div>
-          <div className="day-header">Fri</div>
-          <div className="day-header"></div>
           {days.map((date, index) => {
             if (!date) {
               return <div key={index} className="calendar-day inactive"></div>;
@@ -395,11 +407,9 @@ export default function AdminCalendarTimeSlots() {
                 <div className="day-number">{date.getDate()}</div>
                 
                 <div className="day-content">
-                  <div className="day-header">
-                    <div className="slots-available">
-                      <span className="crew-label">Slots</span>
-                      <span className="crew-number">{availableSlots.length}</span>
-                    </div>
+                  <div className="slots-available">
+                    <span className="crew-label">Slots</span>
+                    <span className="crew-number">{availableSlots.length}</span>
                   </div>
                   
                   {/* Time Slots Display */}
@@ -527,12 +537,15 @@ export default function AdminCalendarTimeSlots() {
                   </button>
                   
                   <div className="quick-fill-buttons">
-                    <h4>Quick Fill:</h4>
-                    <button onClick={quickFillWeekdays} className="btn-outline">
-                      Weekdays (3PM)
+                    <h4>Quick Add:</h4>
+                    <button onClick={quickAdd9AM} className="btn-outline">
+                      + 9AM
                     </button>
-                    <button onClick={quickFillWeekends} className="btn-outline">
-                      Weekends (9AM, 1PM)
+                    <button onClick={quickAdd1PM} className="btn-outline">
+                      + 1PM
+                    </button>
+                    <button onClick={quickAdd3PM} className="btn-outline">
+                      + 3PM
                     </button>
                   </div>
                 </div>

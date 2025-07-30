@@ -42,6 +42,20 @@ export default function SquareFinalPayment({
     }
   }, [booking, rates]);
 
+  // Prevent body scroll and shaking when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [isOpen]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setChargeData(prev => ({
@@ -58,6 +72,19 @@ export default function SquareFinalPayment({
     const subtotal = materials + laborCost;
     const deposit = booking?.paymentInfo?.depositAmount || 80;
     const finalAmount = Math.max(0, subtotal - deposit);
+    
+    console.log('💰 calculateTotal debug:', {
+      rawMaterialsCost: chargeData.materialsCost,
+      rawServiceHours: chargeData.serviceHours,
+      rawCrewRate: chargeData.crewRate,
+      materials,
+      hours,
+      rate,
+      laborCost,
+      subtotal,
+      deposit,
+      finalAmount
+    });
     
     return {
       materials,
@@ -88,14 +115,119 @@ export default function SquareFinalPayment({
     try {
       const totals = calculateTotal();
       
-      // Skip payment processing for now - just complete the booking
-      console.log('💳 Skipping payment processing, calling handleCompleteBooking directly...');
-      await handleCompleteBooking();
-      setPaymentResult({
-        success: true,
-        paymentInfo: { status: 'COMPLETED', amount: totals.finalAmount * 100 },
-        totals
-      });
+      // If there's a final amount to charge, try to charge stored card or mark as manual
+      if (totals.finalAmount > 0) {
+        
+        // Check if we have a stored card to charge
+        if (booking?.paymentInfo?.customerId) {
+        console.log('🎯 CHARGE BUTTON CLICKED - Initiating final payment charge');
+        console.log('🎯 Booking Details:', {
+          bookingId: booking.bookingId,
+          customerName: booking.customer?.name,
+          serviceDate: booking.service?.date,
+          crewSize: booking.service?.crewSize
+        });
+        console.log('🎯 Payment Info from Booking:', {
+          customerId: booking.paymentInfo?.customerId,
+          cardToken: booking.paymentInfo?.cardToken,
+          depositAmount: booking.paymentInfo?.depositAmount,
+          depositPaid: booking.paymentInfo?.depositPaid,
+          paidAt: booking.paymentInfo?.paidAt
+        });
+        console.log('🎯 Charge Details:', {
+          finalAmount: totals.finalAmount,
+          amountInCents: Math.round(totals.finalAmount * 100),
+          materialsCost: totals.materialsCost,
+          laborCost: totals.laborCost,
+          subtotal: totals.subtotal,
+          depositDeduction: totals.deposit
+        });
+        console.log('🎯 API Request will be sent to: /api/square/charge-card-on-file');
+        
+        const requestPayload = {
+          customerId: booking.paymentInfo.customerId,
+          amount: Math.round(totals.finalAmount * 100), // Convert to cents
+          currency: 'USD',
+          description: `Final payment for landscaping service - Booking ${booking.bookingId}`,
+          locationId: import.meta.env.VITE_SQUARE_LOCATION_ID
+        };
+        
+        console.log('🎯 Request Payload:', JSON.stringify(requestPayload, null, 2));
+        
+        const response = await fetch('/api/square/charge-card-on-file', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestPayload),
+        });
+
+        console.log('🎯 API Response received:', {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+
+        if (!response.ok) {
+          console.log('🎯❌ HTTP Error - Response not OK');
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const paymentResult = await response.json();
+        
+        console.log('🎯 Payment Result received:', JSON.stringify(paymentResult, null, 2));
+        
+        if (!paymentResult.success) {
+          console.log('🎯❌ Payment failed according to result:', paymentResult.error);
+          throw new Error(paymentResult.error || 'Payment failed');
+        }
+
+        console.log('🎯✅ Final payment successful!');
+        console.log('🎯✅ Payment ID:', paymentResult.payment?.id);
+        console.log('🎯✅ Payment details:', paymentResult.payment);
+        
+        // Complete the booking after successful payment
+        await handleCompleteBooking();
+        
+        setPaymentResult({
+          success: true,
+          paymentInfo: { 
+            status: 'COMPLETED', 
+            amount: totals.finalAmount * 100,
+            paymentId: paymentResult.payment.id
+          },
+          totals
+        });
+        } else {
+          // No stored card available - mark as manual collection required
+          console.log('🎯❌ No stored card available for booking:', booking.bookingId);
+          console.log('🎯❌ Final amount:', totals.finalAmount);
+          console.log('🎯❌ This will require manual payment collection');
+          
+          // Complete the booking but mark payment as manual
+          await handleCompleteBooking();
+          
+          setPaymentResult({
+            success: true,
+            paymentInfo: { 
+              status: 'MANUAL_COLLECTION_REQUIRED', 
+              amount: totals.finalAmount * 100,
+              message: 'Payment must be collected manually - no stored card available'
+            },
+            totals
+          });
+        }
+      } else {
+        // No final payment needed - just complete booking
+        console.log('💳 No final payment needed');
+        await handleCompleteBooking();
+        setPaymentResult({
+          success: true,
+          paymentInfo: { status: 'COMPLETED', amount: 0 },
+          totals
+        });
+      }
     } catch (error) {
       console.error('Final payment error:', error);
       setPaymentResult({
@@ -208,6 +340,18 @@ export default function SquareFinalPayment({
 
   const totals = calculateTotal();
   const hasStoredCard = booking?.paymentInfo?.customerId;
+  
+  console.log('🎯💳 SquareFinalPayment - Stored card check:', {
+    bookingId: booking?.bookingId,
+    hasPaymentInfo: !!booking?.paymentInfo,
+    customerId: booking?.paymentInfo?.customerId,
+    cardToken: booking?.paymentInfo?.cardToken,
+    hasStoredCard: hasStoredCard,
+    finalAmount: totals.finalAmount,
+    fullPaymentInfo: booking?.paymentInfo
+  });
+  
+  console.log('🎯💳 FULL BOOKING OBJECT:', JSON.stringify(booking, null, 2));
   
   const getModalTitle = () => {
     switch (step) {
@@ -373,10 +517,24 @@ export default function SquareFinalPayment({
         </div>
 
         <div className="payment-method">
-          <FaMoneyBillWave className="card-icon" />
+          <FaCreditCard className="card-icon" />
           <div className="payment-method-text">
-            <p><strong>Payment Method:</strong> Manual collection</p>
-            <p>Payment will be collected manually. This will complete the booking and send the review email.</p>
+            {hasStoredCard && totals.finalAmount > 0 ? (
+              <>
+                <p><strong>Payment Method:</strong> Stored card on file</p>
+                <p>The card used for your deposit will be charged for the final payment.</p>
+              </>
+            ) : totals.finalAmount > 0 ? (
+              <>
+                <p><strong>Payment Method:</strong> Manual card entry required</p>
+                <p>No stored card available. You can enter card details below or collect payment manually.</p>
+              </>
+            ) : (
+              <>
+                <p><strong>Payment Method:</strong> No additional payment needed</p>
+                <p>Your deposit covers the full service cost.</p>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -397,8 +555,10 @@ export default function SquareFinalPayment({
             </>
           ) : totals.finalAmount <= 0 ? (
             'Complete Booking'
-          ) : (
+          ) : hasStoredCard ? (
             `Charge $${totals.finalAmount.toFixed(2)}`
+          ) : (
+            `Mark Complete (Manual: $${totals.finalAmount.toFixed(2)})`
           )}
         </button>
       </div>

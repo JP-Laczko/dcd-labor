@@ -24,26 +24,33 @@ export default function SquarePayment({
   const [cardErrors, setCardErrors] = useState({});
 
   useEffect(() => {
-    const initializeSquare = async () => {
-      if (!window.Square) {
-        console.error('Square.js failed to load');
+    const waitForSquare = (retries = 0, maxRetries = 10) => {
+      if (window.Square) {
+        initializeSquare();
+      } else if (retries < maxRetries) {
+        console.log(`Waiting for Square.js to load... (attempt ${retries + 1}/${maxRetries})`);
+        setTimeout(() => waitForSquare(retries + 1, maxRetries), 500);
+      } else {
+        console.error('Square.js failed to load after multiple attempts');
         onError('Payment system failed to load. Please refresh the page.');
-        return;
       }
+    };
 
+    const initializeSquare = async () => {
       try {
         const paymentsInstance = window.Square.payments(
           import.meta.env.VITE_SQUARE_APPLICATION_ID,
           import.meta.env.VITE_SQUARE_LOCATION_ID
         );
         setPayments(paymentsInstance);
+        console.log('Square payments initialized successfully');
       } catch (error) {
         console.error('Failed to initialize Square payments:', error);
         onError('Failed to initialize payment system.');
       }
     };
 
-    initializeSquare();
+    waitForSquare();
   }, [onError]);
 
   useEffect(() => {
@@ -56,8 +63,7 @@ export default function SquarePayment({
             '.input-container': {
               borderColor: '#d1d5db',
               borderRadius: '8px',
-              borderWidth: '2px',
-              padding: '12px'
+              borderWidth: '2px'
             },
             '.input-container.is-focus': {
               borderColor: '#059669'
@@ -66,12 +72,7 @@ export default function SquarePayment({
               borderColor: '#ef4444'
             },
             '.message-text': {
-              color: '#ef4444',
-              fontSize: '12px'
-            },
-            'input': {
-              fontSize: '16px',
-              fontFamily: 'system-ui, -apple-system, sans-serif'
+              color: '#ef4444'
             }
           }
         });
@@ -124,20 +125,37 @@ export default function SquarePayment({
     setIsSubmitting(true);
 
     try {
-      // Tokenize the card
-      const tokenResult = await card.tokenize();
+      // Tokenize the card for payment
+      const paymentTokenResult = await card.tokenize();
       
-      if (tokenResult.status === 'OK') {
-        console.log('Card tokenized:', tokenResult.token);
+      if (paymentTokenResult.status === 'OK') {
+        console.log('💳 Payment card tokenized:', paymentTokenResult.token);
         
-        // Create payment with token
+        let cardTokenForSaving = null;
+        
+        // If we need to save the card, generate a second token
+        if (saveCard) {
+          console.log('💳 Generating additional token for card saving...');
+          const cardTokenResult = await card.tokenize();
+          
+          if (cardTokenResult.status === 'OK') {
+            cardTokenForSaving = cardTokenResult.token;
+            console.log('💳 Card saving token generated:', cardTokenForSaving);
+          } else {
+            console.log('💳⚠️ Failed to generate card saving token:', cardTokenResult.errors);
+            // Continue with payment but without card saving
+          }
+        }
+        
+        // Create payment with tokens
         const response = await fetch('/api/square/create-payment', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            sourceId: tokenResult.token,
+            sourceId: paymentTokenResult.token,
+            cardTokenForSaving: cardTokenForSaving,
             amount: amount * 100, // Convert to cents
             currency: 'USD',
             description,
@@ -156,8 +174,8 @@ export default function SquarePayment({
         if (result.success) {
           onSuccess({
             paymentId: result.payment.id,
-            amount: result.payment.amountMoney.amount / 100,
-            currency: result.payment.amountMoney.currency,
+            amount: result.payment.amount_money.amount / 100,
+            currency: result.payment.amount_money.currency,
             cardToken: result.cardToken, // For future charges
             customerId: result.customerId // Square customer ID
           });

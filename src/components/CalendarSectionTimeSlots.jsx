@@ -33,7 +33,7 @@ export default function CalendarSectionTimeSlots() {
       const timeSlots = new Map();
       const today = new Date();
       
-      // Initialize next 2 weeks with default time slots
+      // Initialize next 2 weeks with default time slots (starting from tomorrow, not today)
       for (let i = 1; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
@@ -86,7 +86,7 @@ export default function CalendarSectionTimeSlots() {
     } catch (error) {
       console.error('❌ Calendar: Error fetching time slots:', error);
       
-      // Fallback: generate default time slots for all days
+      // Fallback: generate default time slots for all days (starting from tomorrow, not today)
       const fallbackTimeSlots = new Map();
       const today = new Date();
       
@@ -158,7 +158,7 @@ export default function CalendarSectionTimeSlots() {
   const isPastDate = (date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date < today;
+    return date <= today; // Include today as a past date (no same-day booking)
   };
 
   const formatMonthYear = (date) => {

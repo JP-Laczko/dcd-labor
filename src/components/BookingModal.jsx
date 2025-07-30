@@ -24,7 +24,8 @@ export default function BookingModal({
     services: [],
     timeSlot: '',
     displayTime: '',
-    notes: ''
+    notes: '',
+    leafHaul: false
   });
 
   const [rates, setRates] = useState({});
@@ -43,7 +44,7 @@ export default function BookingModal({
 
   // Hourly Services (simple tasks)
   const hourlyServices = [
-    "Leaf Removal",
+    "Leaf Cleanup",
     "Weeding"
   ];
 
@@ -143,7 +144,8 @@ export default function BookingModal({
           services: booking.service?.services || [],
           timeSlot: booking.service?.timeSlot || '',
           displayTime: booking.service?.displayTime || '',
-          notes: booking.service?.notes || ''
+          notes: booking.service?.notes || '',
+          leafHaul: booking.leafHaul || false
         });
       } else {
         setMode('add'); // Add mode for new bookings
@@ -158,7 +160,8 @@ export default function BookingModal({
           services: [],
           timeSlot: '',
           displayTime: '',
-          notes: ''
+          notes: '',
+          leafHaul: false
         });
       }
       setErrors({});
@@ -225,11 +228,21 @@ export default function BookingModal({
     setIsSubmitting(true);
 
     try {
+      // Calculate hourly rate based on crew size and current rates
+      const crewSizeMap = {
+        2: 'twoMan',
+        3: 'threeMan', 
+        4: 'fourMan'
+      };
+      const crewSizeKey = crewSizeMap[parseInt(formData.crewSize)];
+      const hourlyRate = rates[crewSizeKey] || 0;
+
       const bookingData = {
         ...formData,
         date: selectedDate.toISOString().split('T')[0],
         displayTime: formData.timeSlot ? timeSlotUtils.formatTimeForDisplay(formData.timeSlot) : '',
-        crewSize: parseInt(formData.crewSize)
+        crewSize: parseInt(formData.crewSize),
+        hourlyRate: hourlyRate
       };
 
       let result;
@@ -424,7 +437,20 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
             </div>
             <div className="detail-item">
               <label>Hourly Rate:</label>
-              <span>${booking?.service?.hourlyRate || rates[`${formData.crewSize}Man`] || 'N/A'}/hour</span>
+              <span>${(() => {
+                const storedRate = booking?.service?.hourlyRate;
+                const crewSizeMap = { 2: 'twoMan', 3: 'threeMan', 4: 'fourMan' };
+                const crewSizeKey = crewSizeMap[parseInt(formData.crewSize)];
+                const fallbackRate = rates[crewSizeKey];
+                console.log('💰 Rate calculation debug:', {
+                  storedRate,
+                  crewSize: formData.crewSize,
+                  crewSizeKey,
+                  fallbackRate,
+                  rates
+                });
+                return storedRate || fallbackRate || 'N/A';
+              })()}/hour</span>
             </div>
             <div className="detail-item">
               <label>Yard Acreage:</label>
@@ -432,7 +458,15 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
             </div>
             <div className="detail-item full-width">
               <label>Services:</label>
-              <span>{formData.services.join(', ')}</span>
+              <span>
+                {formData.services.join(', ')}
+                {formData.leafHaul && (
+                  <span className="addon-service">
+                    {formData.services.length > 0 ? ', ' : ''}
+                    Yard waste removal (+$280)
+                  </span>
+                )}
+              </span>
             </div>
             {formData.timeSlot && (
               <div className="detail-item">
@@ -675,6 +709,21 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
                     <label htmlFor={service}>{service}</label>
                   </div>
                 ))}
+                
+                {/* Yard Waste Removal */}
+                <div className="service-item">
+                  <input
+                    type="checkbox"
+                    id="leafHaul"
+                    name="leafHaul"
+                    checked={formData.leafHaul}
+                    onChange={(e) => setFormData(prev => ({ ...prev, leafHaul: e.target.checked }))}
+                  />
+                  <label htmlFor="leafHaul" className="checkbox-label">
+                    <span className="checkbox-text">Yard waste removal</span>
+                    <span className="addon-price">+$280</span>
+                  </label>
+                </div>
               </div>
               {errors.services && <span className="error-text">{errors.services}</span>}
             </div>
