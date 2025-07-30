@@ -129,7 +129,8 @@ const getFrontendUrl = () => {
   if (process.env.NODE_ENV === 'production') {
     // Allow multiple production origins
     const allowedOrigins = [
-      process.env.FRONTEND_URL
+      process.env.FRONTEND_URL,
+      'https://dcdlabor.com'
     ].filter(Boolean);
     return allowedOrigins.length > 1 ? allowedOrigins : allowedOrigins[0];
   }
@@ -1904,7 +1905,7 @@ async function sendEmailViaResend(emailData, apiKey) {
 
 async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
   const googleReviewUrl = "https://www.google.com/search?client=safari&sca_esv=c66ebe7918868edf&hl=en-us&q=dcdlabor.com+reviews&uds=AOm0WdEWLxsquUV4gxq7J1YSuvZiRdrTmX4_AU1giwU9g4ziDuRvlknMyw8gsZPSPmLgpACwT5a4DcPJolTo4Z-UodEeEr4lmt3mvF-9VGTFndsNmBDV_jzkyfXJwR_Ac73161-qrPI8dF2pgd5bneMJQVOwSeT2rfmn8mpmH5teNz-AIbl2eAhdkzjEERf7Hle3C1C9T0E4gqS4eIBWXZ8Eip3TTianQ18WEYhJu41HT0AwvWYbVlppKgPlPX0IsukInEd0HmPWlgXrM6JChy19L0xVBnlr72FrbQO6cSa7543CzG8pJLovROxq-d5EtpCNe3TSn0chG0qJVeuy4D68pIRpqnBNCD7Gty_wIvYnNQmsfQuzbq7yBCcYvTYiPy5sFSYBIo24egV1FhFDuLT6oPiP18VlUt2-G7jP76wX697Ul09hF0yKt86JDnrh2Aj_pK4PcT0S&si=AMgyJEtREmoPL4P1I5IDCfuA8gybfVI2d5Uj7QMwYCZHKDZ-E8Oh7e7S7KVYGDmINkdwDdU_8oWTBGghNCf07GL5t-9Z6w3ejGMuHEhZkASO--6r0p0kBn9s7kw4rctZXkUBwPzX_SWA&sa=X&ved=2ahUKEwjm-5er2LKOAxXuLVkFHTkACJIQk8gLegQIGxAB&ictx=1&stq=1&cs=1&lei=c-dvaKb2De7b5NoPuYCgkAk#ebo=4";
-  const websiteUrl = "https://dcd-labor.vercel.app";
+  const websiteUrl = "https://dcdlabor.com";
   
   // Get pricing information
   const crewSizeLabels = {
@@ -2002,7 +2003,7 @@ async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
             <p>
               <strong>Email:</strong> ${dcdEmail}<br>
               <strong>Phone:</strong> (908) 285-4587<br>
-              <strong>Website:</strong> <a href="${websiteUrl}" target="_blank">dcd-labor.vercel.app</a>
+              <strong>Website:</strong> <a href="${websiteUrl}" target="_blank">dcdlabor.com</a>
             </p>
           </div>
         </div>
@@ -2038,7 +2039,7 @@ async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
 
 async function generateGoogleReviewEmailPreview(bookingData, dcdEmail) {
   const googleReviewUrl = "https://www.google.com/search?client=safari&sca_esv=c66ebe7918868edf&hl=en-us&q=dcdlabor.com+reviews&uds=AOm0WdEWLxsquUV4gxq7J1YSuvZiRdrTmX4_AU1giwU9g4ziDuRvlknMyw8gsZPSPmLgpACwT5a4DcPJolTo4Z-UodEeEr4lmt3mvF-9VGTFndsNmBDV_jzkyfXJwR_Ac73161-qrPI8dF2pgd5bneMJQVOwSeT2rfmn8mpmH5teNz-AIbl2eAhdkzjEERf7Hle3C1C9T0E4gqS4eIBWXZ8Eip3TTianQ18WEYhJu41HT0AwvWYbVlppKgPlPX0IsukInEd0HmPWlgXrM6JChy19L0xVBnlr72FrbQO6cSa7543CzG8pJLovROxq-d5EtpCNe3TSn0chG0qJVeuy4D68pIRpqnBNCD7Gty_wIvYnNQmsfQuzbq7yBCcYvTYiPy5sFSYBIo24egV1FhFDuLT6oPiP18VlUt2-G7jP76wX697Ul09hF0yKt86JDnrh2Aj_pK4PcT0S&si=AMgyJEtREmoPL4P1I5IDCfuA8gybfVI2d5Uj7QMwYCZHKDZ-E8Oh7e7S7KVYGDmINkdwDdU_8oWTBGghNCf07GL5t-9Z6w3ejGMuHEhZkASO--6r0p0kBn9s7kw4rctZXkUBwPzX_SWA&sa=X&ved=2ahUKEwjm-5er2LKOAxXuLVkFHTkACJIQk8gLegQIGxAB&ictx=1&stq=1&cs=1&lei=c-dvaKb2De7b5NoPuYCgkAk#ebo=4";
-  const websiteUrl = "https://dcd-labor.vercel.app";
+  const websiteUrl = "https://dcdlabor.com";
   
   // Get pricing information
   const crewSizeLabels = {
@@ -2136,7 +2137,7 @@ async function generateGoogleReviewEmailPreview(bookingData, dcdEmail) {
             <p>
               <strong>Email:</strong> ${dcdEmail}<br>
               <strong>Phone:</strong> (908) 285-4587<br>
-              <strong>Website:</strong> <a href="${websiteUrl}" target="_blank">dcd-labor.vercel.app</a>
+              <strong>Website:</strong> <a href="${websiteUrl}" target="_blank">dcdlabor.com</a>
             </p>
           </div>
         </div>

@@ -407,11 +407,6 @@ export default function AdminCalendarTimeSlots() {
                 <div className="day-number">{date.getDate()}</div>
                 
                 <div className="day-content">
-                  <div className="slots-available">
-                    <span className="crew-label">Slots</span>
-                    <span className="crew-number">{availableSlots.length}</span>
-                  </div>
-                  
                   {/* Time Slots Display */}
                   <div className="time-slots-display">
                     {timeSlotUtils.sortTimeSlots(timeSlots).map((slot, idx) => (

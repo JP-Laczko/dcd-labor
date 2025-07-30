@@ -331,13 +331,6 @@ export default function AdminCalendar() {
                 <div className="day-number">{date.getDate()}</div>
                 
                 <div className="day-content">
-                  <div className="day-header">
-                    <div className="slots-available">
-                      <span className="crew-label">Crews</span>
-                      <span className="crew-number">{availableSlots}</span>
-                    </div>
-                  </div>
-                  
                   <div className="bookings-list">
                     {dayBookings.length > 0 ? (
                       isMobile && dayBookings.length > 2 ? (
