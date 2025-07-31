@@ -130,7 +130,8 @@ const getFrontendUrl = () => {
     // Allow multiple production origins
     const allowedOrigins = [
       process.env.FRONTEND_URL,
-      'https://dcdlabor.com'
+      'https://dcdlabor.com',
+      'https://www.dcdlabor.com'
     ].filter(Boolean);
     return allowedOrigins.length > 1 ? allowedOrigins : allowedOrigins[0];
   }
