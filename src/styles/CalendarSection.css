@@ -410,13 +410,17 @@
 .booking-item {
   background: #3b82f6;
   color: white;
-  font-size: 10px;
-  padding: 2px 4px;
-  border-radius: 3px;
+  font-size: 11px;
+  padding: 8px 6px;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
   z-index: 2;
   position: relative;
+  min-height: 45px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .booking-item:hover {

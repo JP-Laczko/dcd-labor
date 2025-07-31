@@ -564,7 +564,7 @@
   /* day-header removed */
   
   .calendar-day {
-    min-height: 160px;
+    min-height: 185px;
     padding: 3px;
     font-size: 8px;
     min-width: 0;
@@ -644,33 +644,33 @@
     padding-bottom: 2px;
     position: relative;
     z-index: 1;
-    max-height: 80px; /* Increased height for better visibility */
+    max-height: 110px; /* Much larger height to accommodate bigger booking items */
   }
   
   .booking-item {
-    margin-bottom: 4px;
-    padding: 6px;
-    font-size: 9px;
+    margin-bottom: 6px;
+    padding: 12px 8px;
+    font-size: 11px;
     position: relative;
-    background: rgba(59, 130, 246, 0.15) !important;
-    border: 1px solid rgba(59, 130, 246, 0.4) !important;
-    border-radius: 3px;
-    min-height: 32px;
+    background: rgba(59, 130, 246, 0.3) !important;
+    border: 2px solid rgba(59, 130, 246, 0.7) !important;
+    border-radius: 5px;
+    min-height: 50px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+    justify-content: flex-start;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
   }
   
   .customer-name {
-    font-size: 10px;
-    margin-bottom: 1px;
+    font-size: 11px;
+    margin-bottom: 2px;
     font-weight: bold;
-    line-height: 1.1;
+    line-height: 1.2;
     word-wrap: break-word;
     overflow-wrap: break-word;
     color: #1f2937 !important;
-    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5) !important;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7) !important;
   }
   
   .booking-details {
