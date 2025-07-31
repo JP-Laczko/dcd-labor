@@ -11,13 +11,14 @@ export default function CalendarSectionTimeSlots() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
   const [showTimeSlotSelector, setShowTimeSlotSelector] = useState(false);
+  const [hasUserNavigated, setHasUserNavigated] = useState(false);
 
   useEffect(() => {
     const initializeCalendar = async () => {
       console.log('📅 CalendarSection: Initializing time slots calendar...');
       try {
         const connectionResult = await mongoService.connect();
-        console.log('📅 CalendarSection: MongoDB connection result:', connectionResult);
+        console.log('📅 CalendarSection: MongoDB connection status:', connectionResult ? 'connected' : 'failed');
         await fetchTimeSlots();
       } catch (error) {
         console.error('📅 CalendarSection: Initialization error:', error);
@@ -165,15 +166,34 @@ export default function CalendarSectionTimeSlots() {
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
+  // Check if today is the last day of the month and adjust currentDate accordingly
+  const getDisplayDate = () => {
+    const today = new Date();
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    // Only apply the "show next month" logic if user hasn't manually navigated
+    if (!hasUserNavigated && 
+        today.getDate() === lastDayOfMonth.getDate() && 
+        currentDate.getMonth() === today.getMonth() && 
+        currentDate.getFullYear() === today.getFullYear()) {
+      return new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    }
+    
+    return currentDate;
+  };
+
   const goToPreviousMonth = () => {
+    setHasUserNavigated(true);
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
 
   const goToNextMonth = () => {
+    setHasUserNavigated(true);
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  const days = getDaysInMonth(currentDate);
+  const displayDate = getDisplayDate();
+  const days = getDaysInMonth(displayDate);
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
@@ -187,7 +207,7 @@ export default function CalendarSectionTimeSlots() {
             <button onClick={goToPreviousMonth} className="nav-button">
               &#8249;
             </button>
-            <h3>{formatMonthYear(currentDate)}</h3>
+            <h3>{formatMonthYear(displayDate)}</h3>
             <button onClick={goToNextMonth} className="nav-button">
               &#8250;
             </button>

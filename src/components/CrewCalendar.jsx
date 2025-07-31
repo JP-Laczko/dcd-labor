@@ -19,7 +19,7 @@ export default function CrewCalendar() {
       console.log('📅 CrewCalendar: Initializing calendar...');
       try {
         const connectionResult = await mongoService.connect();
-        console.log('📅 CrewCalendar: MongoDB connection result:', connectionResult);
+        console.log('📅 CrewCalendar: MongoDB connection status:', connectionResult ? 'connected' : 'failed');
         await fetchAvailability();
         await fetchBookings();
       } catch (error) {
@@ -58,7 +58,7 @@ export default function CrewCalendar() {
       
       // Step 2: Get all calendar availability entries
       const calendarResult = await mongoService.getAllCalendarAvailability();
-      console.log('📅 Calendar availability data:', calendarResult);
+      console.log('📅 Calendar availability data received');
       
       const allowedBookingsPerDay = new Map();
       if (calendarResult.success && calendarResult.availability) {

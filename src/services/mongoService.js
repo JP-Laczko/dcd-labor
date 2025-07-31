@@ -102,7 +102,7 @@ class MongoService {
       } else {
         const defaultRates = { twoMan: 70, threeMan: 100, fourMan: 130 };
         localStorage.setItem('teamRates', JSON.stringify(defaultRates));
-        console.log('💾 Saved default rates to localStorage:', defaultRates);
+        console.log('💾 Saved default rates to localStorage');
         return { success: true, rates: defaultRates };
       }
     }
@@ -204,7 +204,6 @@ class MongoService {
 
       // Get current rates to store with booking
       const ratesResult = await this.getRates();
-      console.log('📊 Rate fetch result:', ratesResult);
       const currentRates = ratesResult.success ? ratesResult.rates : { twoMan: 70, threeMan: 100, fourMan: 130 };
       // Convert crew size number to proper key format
       const crewSizeMap = {
@@ -215,13 +214,6 @@ class MongoService {
       const crewSizeKey = crewSizeMap[bookingData.crewSize.toString()];
       const currentRate = currentRates[crewSizeKey] || 0;
       
-      console.log('📊 Booking rate calculation:', {
-        crewSize: bookingData.crewSize,
-        crewSizeKey,
-        currentRates,
-        currentRate,
-        fallbackUsed: !ratesResult.success
-      });
 
       const booking = {
         bookingId: this.generateId(),
@@ -278,12 +270,7 @@ class MongoService {
 
       if (this.isConnected) {
         // Real MongoDB operation - POST to backend API
-        console.log('✅ Saving booking to MongoDB with rate:', {
-          bookingId: booking.bookingId,
-          crewSize: booking.service.crewSize,
-          hourlyRate: booking.service.hourlyRate
-        });
-        console.log('📋 Full booking object:', booking);
+        console.log('✅ Saving booking to MongoDB');
         
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/bookings`, {
           method: 'POST',
@@ -298,7 +285,7 @@ class MongoService {
         }
 
         const result = await response.json();
-        console.log('MongoDB save result:', result);
+        console.log('MongoDB save result: success');
         
         // Update calendar time slot to mark it as booked
         if (booking.service.timeSlot) {
@@ -353,7 +340,7 @@ class MongoService {
           }
           
           const data = await response.json();
-          console.log('🗄️ MongoDB bookings response:', data);
+          console.log('🗄️ MongoDB bookings response received');
           return { success: true, bookings: data };
         } catch (apiError) {
           console.error('🗄️ API call failed, falling back to localStorage:', apiError);
@@ -380,14 +367,7 @@ class MongoService {
         // Fallback to localStorage
         console.log('🗄️ Using localStorage fallback for bookings');
         let bookings = this.getLocalBookings();
-        console.log('🗄️ Raw bookings from localStorage:', bookings);
-        
-        // Log each booking structure
-        bookings.forEach((booking, index) => {
-          console.log(`🗄️ Booking ${index}:`, booking);
-          console.log(`🗄️ Booking ${index} service date:`, booking.service?.date);
-          console.log(`🗄️ Booking ${index} direct date:`, booking.date);
-        });
+        console.log('🗄️ Raw bookings from localStorage: count =', bookings.length);
         
         // Apply filters
         if (filters.date) {
@@ -406,7 +386,7 @@ class MongoService {
           console.log('🗄️ After email filter:', bookings.length);
         }
         
-        console.log('🗄️ Final filtered bookings:', bookings);
+        console.log('🗄️ Final filtered bookings count:', bookings.length);
         return { success: true, bookings };
       }
     } catch (error) {
@@ -470,7 +450,7 @@ class MongoService {
           }
           
           const data = await response.json();
-          console.log('🗄️ MongoDB calendar availability response:', data);
+          console.log('🗄️ MongoDB calendar availability response received');
           return { success: true, availability: data };
         } catch (apiError) {
           console.error('🗄️ API call failed, falling back to localStorage:', apiError);
@@ -489,7 +469,7 @@ class MongoService {
         // Fallback to localStorage - updated to match MongoDB structure
         console.log('🗄️ Using localStorage fallback for all availability');
         const calendar = this.getLocalCalendar();
-        console.log('🗄️ Local calendar data:', calendar);
+        console.log('🗄️ Local calendar data loaded');
         
         // Updated: localStorage now stores direct array format like MongoDB
         // localStorage format: [{ date: "2025-07-23", bookings: 1 }, ...]
@@ -499,7 +479,7 @@ class MongoService {
             bookings: calendar[dateString].bookings || calendar[dateString] || 0
           }));
         
-        console.log('🗄️ Converted to array:', availabilityArray);
+        console.log('🗄️ Converted to array format');
         return { success: true, availability: availabilityArray };
       }
     } catch (error) {
@@ -522,7 +502,7 @@ class MongoService {
         // Fallback to localStorage with simplified structure
         console.log('🗄️ Using localStorage fallback');
         const calendar = this.getLocalCalendar();
-        console.log('🗄️ Local calendar data:', calendar);
+        console.log('🗄️ Local calendar data loaded');
         const dayAvailability = calendar[dateString];
         // Check day availability
         
@@ -533,7 +513,7 @@ class MongoService {
             bookings: dayAvailability.bookings || dayAvailability || 0
           } : null
         };
-        console.log('🗄️ Returning result:', result);
+        console.log('🗄️ Returning calendar result');
         return result;
       }
     } catch (error) {
@@ -576,7 +556,7 @@ class MongoService {
           }
           
           const data = await response.json();
-          console.log('🗄️ MongoDB update response:', data);
+          console.log('🗄️ MongoDB update response received');
           return { success: true };
         } catch (apiError) {
           console.error('🗄️ API call failed, falling back to localStorage:', apiError);
@@ -607,7 +587,7 @@ class MongoService {
           existingEntry.bookings = Math.max(0, crewCount);
         }
         
-        console.log('🗄️ Updated calendar entry:', existingEntry);
+        console.log('🗄️ Updated calendar entry for date:', dateString);
         localStorage.setItem('dcd_calendar', JSON.stringify(calendar));
         return { success: true };
       }
@@ -686,14 +666,12 @@ class MongoService {
   // UTILITY METHODS
   getLocalBookings() {
     const bookingsStr = localStorage.getItem('dcd_bookings') || '[]';
-    console.log('🗄️ localStorage dcd_bookings raw string:', bookingsStr);
     const bookings = JSON.parse(bookingsStr);
     return bookings;
   }
 
   getLocalCalendar() {
     const calendar = JSON.parse(localStorage.getItem('dcd_calendar') || '{}');
-    console.log('🗄️ getLocalCalendar returning:', calendar);
     return calendar;
   }
 
@@ -740,7 +718,7 @@ class MongoService {
         }
 
         const result = await response.json();
-        console.log('MongoDB update result:', result);
+        console.log('MongoDB update result: success');
         return { success: true, booking: result };
       } else {
         // Fallback to localStorage
@@ -794,7 +772,7 @@ class MongoService {
         }
 
         const result = await response.json();
-        console.log('MongoDB delete result:', result);
+        console.log('MongoDB delete result: success');
         return { success: true };
       } else {
         // Fallback to localStorage
@@ -841,7 +819,7 @@ class MongoService {
           }
 
           const result = await response.json();
-          console.log('🗄️ MongoDB time slots update result:', result);
+          console.log('🗄️ MongoDB time slots update result: success');
           return { success: true, result };
         } catch (fetchError) {
           console.warn('🟡 MongoDB time slots update failed, using localStorage fallback:', fetchError);
@@ -931,7 +909,7 @@ class MongoService {
         }
 
         const result = await response.json();
-        console.log('🗄️ Time slot marked as booked:', result);
+        console.log('🗄️ Time slot marked as booked successfully');
         return { success: true, result };
       } else {
         // Local storage fallback

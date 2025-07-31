@@ -8,6 +8,7 @@ export default function CalendarSection() {
   const [dailyAvailability, setDailyAvailability] = useState(new Map());
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [hasUserNavigated, setHasUserNavigated] = useState(false);
 
   useEffect(() => {
     // Initialize MongoDB connection and fetch availability
@@ -15,7 +16,7 @@ export default function CalendarSection() {
       console.log('📅 CalendarSection: Initializing calendar...');
       try {
         const connectionResult = await mongoService.connect();
-        console.log('📅 CalendarSection: MongoDB connection result:', connectionResult);
+        console.log('📅 CalendarSection: MongoDB connection status:', connectionResult ? 'connected' : 'failed');
         await fetchAvailability();
       } catch (error) {
         console.error('📅 CalendarSection: Initialization error:', error);
@@ -25,6 +26,22 @@ export default function CalendarSection() {
     
     initializeCalendar();
   }, [currentDate]);
+
+  // Check if today is the last day of the month and adjust currentDate accordingly
+  const getDisplayDate = () => {
+    const today = new Date();
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    // Only apply the "show next month" logic if user hasn't manually navigated
+    if (!hasUserNavigated && 
+        today.getDate() === lastDayOfMonth.getDate() && 
+        currentDate.getMonth() === today.getMonth() && 
+        currentDate.getFullYear() === today.getFullYear()) {
+      return new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    }
+    
+    return currentDate;
+  };
 
   const fetchAvailability = async () => {
     try {
@@ -42,7 +59,7 @@ export default function CalendarSection() {
       
       // Step 2: Get all calendar availability entries
       const calendarResult = await mongoService.getAllCalendarAvailability();
-      console.log('📅 Calendar availability data:', calendarResult);
+      console.log('📅 Calendar availability data received');
       
       const allowedBookingsPerDay = new Map();
       if (calendarResult.success && calendarResult.availability) {
@@ -156,14 +173,17 @@ export default function CalendarSection() {
   };
 
   const goToPreviousMonth = () => {
+    setHasUserNavigated(true);
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
 
   const goToNextMonth = () => {
+    setHasUserNavigated(true);
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
-  const days = getDaysInMonth(currentDate);
+  const displayDate = getDisplayDate();
+  const days = getDaysInMonth(displayDate);
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
@@ -177,7 +197,7 @@ export default function CalendarSection() {
             <button onClick={goToPreviousMonth} className="nav-button">
               &#8249;
             </button>
-            <h3>{formatMonthYear(currentDate)}</h3>
+            <h3>{formatMonthYear(displayDate)}</h3>
             <button onClick={goToNextMonth} className="nav-button">
               &#8250;
             </button>

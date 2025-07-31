@@ -27,7 +27,7 @@ export default function AdminCalendar() {
       console.log('📅 AdminCalendar: Initializing calendar...');
       try {
         const connectionResult = await mongoService.connect();
-        console.log('📅 AdminCalendar: MongoDB connection result:', connectionResult);
+        console.log('📅 AdminCalendar: MongoDB connection status:', connectionResult ? 'connected' : 'failed');
         await fetchAvailability();
         await fetchBookings();
         await loadRates();
@@ -91,7 +91,7 @@ export default function AdminCalendar() {
       
       // Step 2: Get all calendar availability entries
       const calendarResult = await mongoService.getAllCalendarAvailability();
-      console.log('📅 Calendar availability data:', calendarResult);
+      console.log('📅 Calendar availability data received');
       
       const allowedBookingsPerDay = new Map();
       if (calendarResult.success && calendarResult.availability) {

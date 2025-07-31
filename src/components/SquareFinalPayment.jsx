@@ -9,7 +9,7 @@ export default function SquareFinalPayment({
   onSuccess,
   rates = {} 
 }) {
-  console.log('🎯 SquareFinalPayment component rendered. isOpen:', isOpen, 'booking:', booking?.bookingId);
+  console.log('🎯 SquareFinalPayment component rendered. isOpen:', isOpen);
   const [step, setStep] = useState(1); // 1: calculation, 2: confirmation, 3: result
   const [chargeData, setChargeData] = useState({
     materialsCost: '',
@@ -27,13 +27,7 @@ export default function SquareFinalPayment({
       const fallbackRate = rates[crewSizeKey] || 0;
       const finalRate = storedRate || fallbackRate;
       
-      console.log('💰 Setting crew rate:', {
-        storedRate,
-        crewSizeKey,
-        fallbackRate,
-        finalRate,
-        booking: booking.bookingId
-      });
+      console.log('💰 Setting crew rate for booking:', booking.bookingId);
       
       setChargeData(prev => ({
         ...prev,
@@ -73,18 +67,7 @@ export default function SquareFinalPayment({
     const deposit = booking?.paymentInfo?.depositAmount || 80;
     const finalAmount = Math.max(0, subtotal - deposit);
     
-    console.log('💰 calculateTotal debug:', {
-      rawMaterialsCost: chargeData.materialsCost,
-      rawServiceHours: chargeData.serviceHours,
-      rawCrewRate: chargeData.crewRate,
-      materials,
-      hours,
-      rate,
-      laborCost,
-      subtotal,
-      deposit,
-      finalAmount
-    });
+    console.log('💰 calculateTotal completed for final amount:', finalAmount);
     
     return {
       materials,
@@ -120,29 +103,7 @@ export default function SquareFinalPayment({
         
         // Check if we have a stored card to charge
         if (booking?.paymentInfo?.customerId) {
-        console.log('🎯 CHARGE BUTTON CLICKED - Initiating final payment charge');
-        console.log('🎯 Booking Details:', {
-          bookingId: booking.bookingId,
-          customerName: booking.customer?.name,
-          serviceDate: booking.service?.date,
-          crewSize: booking.service?.crewSize
-        });
-        console.log('🎯 Payment Info from Booking:', {
-          customerId: booking.paymentInfo?.customerId,
-          cardToken: booking.paymentInfo?.cardToken,
-          depositAmount: booking.paymentInfo?.depositAmount,
-          depositPaid: booking.paymentInfo?.depositPaid,
-          paidAt: booking.paymentInfo?.paidAt
-        });
-        console.log('🎯 Charge Details:', {
-          finalAmount: totals.finalAmount,
-          amountInCents: Math.round(totals.finalAmount * 100),
-          materialsCost: totals.materialsCost,
-          laborCost: totals.laborCost,
-          subtotal: totals.subtotal,
-          depositDeduction: totals.deposit
-        });
-        console.log('🎯 API Request will be sent to: /api/square/charge-card-on-file');
+        console.log('🎯 CHARGE BUTTON CLICKED - Initiating final payment charge for booking:', booking.bookingId);
         
         const requestPayload = {
           customerId: booking.paymentInfo.customerId,
@@ -152,7 +113,7 @@ export default function SquareFinalPayment({
           locationId: import.meta.env.VITE_SQUARE_LOCATION_ID
         };
         
-        console.log('🎯 Request Payload:', JSON.stringify(requestPayload, null, 2));
+        console.log('🎯 Request Payload prepared for amount:', totals.finalAmount);
         
         const response = await fetch('/api/square/charge-card-on-file', {
           method: 'POST',
@@ -162,12 +123,7 @@ export default function SquareFinalPayment({
           body: JSON.stringify(requestPayload),
         });
 
-        console.log('🎯 API Response received:', {
-          ok: response.ok,
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
-        });
+        console.log('🎯 API Response received, status:', response.status);
 
         if (!response.ok) {
           console.log('🎯❌ HTTP Error - Response not OK');
@@ -176,16 +132,14 @@ export default function SquareFinalPayment({
 
         const paymentResult = await response.json();
         
-        console.log('🎯 Payment Result received:', JSON.stringify(paymentResult, null, 2));
+        console.log('🎯 Payment Result received, success:', paymentResult.success);
         
         if (!paymentResult.success) {
           console.log('🎯❌ Payment failed according to result:', paymentResult.error);
           throw new Error(paymentResult.error || 'Payment failed');
         }
 
-        console.log('🎯✅ Final payment successful!');
-        console.log('🎯✅ Payment ID:', paymentResult.payment?.id);
-        console.log('🎯✅ Payment details:', paymentResult.payment);
+        console.log('🎯✅ Final payment successful! Payment ID:', paymentResult.payment?.id);
         
         // Complete the booking after successful payment
         await handleCompleteBooking();
@@ -201,9 +155,7 @@ export default function SquareFinalPayment({
         });
         } else {
           // No stored card available - mark as manual collection required
-          console.log('🎯❌ No stored card available for booking:', booking.bookingId);
-          console.log('🎯❌ Final amount:', totals.finalAmount);
-          console.log('🎯❌ This will require manual payment collection');
+          console.log('🎯❌ No stored card available - manual collection required for booking:', booking.bookingId);
           
           // Complete the booking but mark payment as manual
           await handleCompleteBooking();
@@ -341,17 +293,9 @@ export default function SquareFinalPayment({
   const totals = calculateTotal();
   const hasStoredCard = booking?.paymentInfo?.customerId;
   
-  console.log('🎯💳 SquareFinalPayment - Stored card check:', {
-    bookingId: booking?.bookingId,
-    hasPaymentInfo: !!booking?.paymentInfo,
-    customerId: booking?.paymentInfo?.customerId,
-    cardToken: booking?.paymentInfo?.cardToken,
-    hasStoredCard: hasStoredCard,
-    finalAmount: totals.finalAmount,
-    fullPaymentInfo: booking?.paymentInfo
-  });
+  console.log('🎯💳 SquareFinalPayment - Stored card check for booking:', booking?.bookingId, 'hasStoredCard:', hasStoredCard);
   
-  console.log('🎯💳 FULL BOOKING OBJECT:', JSON.stringify(booking, null, 2));
+  console.log('🎯💳 Payment processing initialized');
   
   const getModalTitle = () => {
     switch (step) {
