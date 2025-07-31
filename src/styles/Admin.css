@@ -564,7 +564,8 @@
   /* day-header removed */
   
   .calendar-day {
-    min-height: 185px;
+    min-height: 250px !important;
+    height: 250px !important;
     padding: 3px;
     font-size: 8px;
     min-width: 0;
@@ -648,14 +649,15 @@
   }
   
   .booking-item {
-    margin-bottom: 6px;
-    padding: 12px 8px;
-    font-size: 11px;
+    margin-bottom: 8px !important;
+    padding: 15px 10px !important;
+    font-size: 12px !important;
     position: relative;
     background: rgba(59, 130, 246, 0.3) !important;
     border: 2px solid rgba(59, 130, 246, 0.7) !important;
     border-radius: 5px;
-    min-height: 50px;
+    min-height: 70px !important;
+    height: auto !important;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -702,8 +704,8 @@
     font-size: 7px !important;
     min-height: 14px !important;
     position: absolute !important;
-    top: 140px !important; /* Adjusted for increased cell height */
-    bottom: auto !important;
+    bottom: 2px !important; /* Move to bottom of the bigger cell */
+    top: auto !important;
     left: 1px !important;
     right: 1px !important;
     margin: 0 !important;
@@ -725,7 +727,7 @@
     overflow: visible !important;
     flex-wrap: wrap !important;
     position: absolute !important;
-    top: 18px !important; /* Move below day number */
+    top: 15px !important; /* Move up - closer to day number */
     left: 2px !important;
     right: 2px !important;
     z-index: 5 !important;
@@ -747,10 +749,12 @@
   }
   
   .bookings-list {
-    flex: 1 !important;
+    position: absolute !important;
+    top: 40px !important; /* Move up closer to time slots */
+    left: 2px !important;
+    right: 2px !important;
+    bottom: 2px !important; /* Move down - almost to bottom */
     overflow-y: auto !important;
-    max-height: 85px !important;
-    margin: 42px 0 18px 0 !important; /* Start after time slots, space for button */
     background: rgba(255, 255, 255, 0.9) !important;
     border-radius: 2px !important;
     padding: 3px !important;
