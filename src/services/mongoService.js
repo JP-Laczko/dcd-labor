@@ -230,7 +230,6 @@ class MongoService {
           serviceType: bookingData.serviceType || 'estimate', // 'hourly' or 'estimate'
           crewSize: parseInt(bookingData.crewSize),
           hourlyRate: currentRate,
-          yardAcreage: bookingData.yardAcreage,
           services: bookingData.services,
           notes: bookingData.notes || '',
           estimatedHours: null,
@@ -741,8 +740,7 @@ class MongoService {
             ...bookings[bookingIndex].service,
             date: new Date(bookingData.date),
             crewSize: parseInt(bookingData.crewSize),
-            yardAcreage: bookingData.yardAcreage,
-            services: bookingData.services,
+              services: bookingData.services,
             notes: bookingData.notes || ''
           },
           updatedAt: new Date()

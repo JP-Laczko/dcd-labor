@@ -197,6 +197,7 @@ export default function CalendarSectionTimeSlots() {
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
+    <>
     <section className="calendar-section">
       <div className="calendar-container">
         <h2>Schedule Your Service</h2>
@@ -279,48 +280,49 @@ export default function CalendarSectionTimeSlots() {
           </div>
         </div>
       </div>
+    </section>
 
-      {/* Time Slot Selector Modal */}
-      {showTimeSlotSelector && selectedDate && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-content time-slot-selector" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Select a Time Slot for {selectedDate.toLocaleDateString()}</h3>
-              <button className="close-button" onClick={handleCloseModal}>&times;</button>
-            </div>
-            
-            <div className="modal-body">
-              <div className="time-slot-options">
-                {(() => {
-                  const dateString = selectedDate.toISOString().split('T')[0];
-                  const timeSlots = dailyTimeSlots.get(dateString) || [];
-                  const availableSlots = timeSlotUtils.getAvailableSlots(timeSlots);
-                  
-                  return timeSlotUtils.sortTimeSlots(availableSlots).map((slot, idx) => (
-                    <button
-                      key={idx}
-                      className="time-slot-option"
-                      onClick={() => handleTimeSlotSelection(slot.time)}
-                    >
-                      <div className="time-display">{slot.displayTime}</div>
-                      <div className="time-24hr">{slot.time}</div>
-                    </button>
-                  ));
-                })()}
-              </div>
+    {/* Time Slot Selector Modal - Outside calendar section for proper viewport centering */}
+    {showTimeSlotSelector && selectedDate && (
+      <div className="modal-overlay" onClick={handleCloseModal}>
+        <div className="modal-content time-slot-selector" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>Select a Time Slot for {selectedDate.toLocaleDateString()}</h3>
+            <button className="close-button" onClick={handleCloseModal}>&times;</button>
+          </div>
+          
+          <div className="modal-body">
+            <div className="time-slot-options">
+              {(() => {
+                const dateString = selectedDate.toISOString().split('T')[0];
+                const timeSlots = dailyTimeSlots.get(dateString) || [];
+                const availableSlots = timeSlotUtils.getAvailableSlots(timeSlots);
+                
+                return timeSlotUtils.sortTimeSlots(availableSlots).map((slot, idx) => (
+                  <button
+                    key={idx}
+                    className="time-slot-option"
+                    onClick={() => handleTimeSlotSelection(slot.time)}
+                  >
+                    <div className="time-display">{slot.displayTime}</div>
+                    <div className="time-24hr">{slot.time}</div>
+                  </button>
+                ));
+              })()}
             </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
-      {/* Payment Modal */}
-      <PaymentBookingModal
-        isOpen={isBookingModalOpen}
-        onClose={handleCloseModal}
-        selectedDate={selectedDate}
-        selectedTimeSlot={selectedTimeSlot}
-        onBookingChange={handleBookingChange}
-      />
-    </section>
+    {/* Payment Modal */}
+    <PaymentBookingModal
+      isOpen={isBookingModalOpen}
+      onClose={handleCloseModal}
+      selectedDate={selectedDate}
+      selectedTimeSlot={selectedTimeSlot}
+      onBookingChange={handleBookingChange}
+    />
+    </>
   );
 }

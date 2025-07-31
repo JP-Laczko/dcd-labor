@@ -18,7 +18,6 @@ export default function Schedule() {
     services: [],
     date: "",
     crewSize: "",
-    yardAcreage: "",
     notes: "",
     leafHaul: false
   });
@@ -231,7 +230,6 @@ export default function Schedule() {
         phone: formData.phone,
         address: formData.address,
         services: formData.services,
-        yardAcreage: formData.yardAcreage,
         notes: formData.notes,
         leafHaul: formData.leafHaul,
         requestType: 'quote',
@@ -265,8 +263,7 @@ export default function Schedule() {
           services: [],
           date: "",
           crewSize: "",
-          yardAcreage: "",
-          notes: "",
+                notes: "",
           leafHaul: false
         });
       } else {
@@ -302,8 +299,7 @@ export default function Schedule() {
       services: [],
       date: "",
       crewSize: "",
-      yardAcreage: "",
-      notes: "",
+        notes: "",
       leafHaul: false
     });
     setSelectedServiceType("");
@@ -409,14 +405,14 @@ export default function Schedule() {
                 name="notes"
                 value={formData.notes}
                 onChange={handleInputChange}
-                placeholder="Any special instructions or details about your property..."
+                placeholder="Any special instructions, details about your property, or questions..."
                 rows="4"
               />
             </div>
 
             <div className="quote-info">
               <h3>What happens next?</h3>
-              <p>After submitting this form, we'll review your requirements and get back to you within 24 hours with a detailed quote for your project.</p>
+              <p>After submitting this form, we'll review your requirements and get back to you within 48 hours with a detailed quote for your project.</p>
             </div>
 
             <button type="submit" className="submit-button" disabled={isSubmitting}>

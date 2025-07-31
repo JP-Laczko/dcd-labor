@@ -757,7 +757,6 @@ app.put('/api/bookings/:id', async (req, res) => {
         date: bookingData.date,
         crewSize: parseInt(bookingData.crewSize),
         hourlyRate: bookingData.hourlyRate || existingBooking.service?.hourlyRate || 0,
-        yardAcreage: bookingData.yardAcreage,
         services: bookingData.services,
         timeSlot: bookingData.timeSlot || '',
         displayTime: bookingData.displayTime || '',
@@ -991,7 +990,6 @@ app.get('/api/email-preview', async (req, res) => {
         address: '123 Main Street, Athens, GA 30601',
         rate: '250'
       },
-      yardAcreage: '0.5 acres',
       services: ['Lawn Mowing', 'Leaf Removal', 'Hedge Trimming'],
       timeSlot: '09:00',
       displayTime: '9AM',
@@ -1012,8 +1010,7 @@ app.get('/api/email-preview', async (req, res) => {
         phone: '(555) 123-4567',
         address: '123 Main Street, Athens, GA 30601',
         services: ['Mulching', 'Brush removal', 'Log splitting'],
-        yardAcreage: '0.5 acres',
-        notes: 'Please contact me in the morning.',
+          notes: 'Please contact me in the morning. Updated preview.',
         leafHaul: true,
         submittedAt: new Date().toISOString()
       };
@@ -1049,7 +1046,7 @@ app.get('/api/email-preview', async (req, res) => {
             
             <div class="content">
               <h2>Hello ${sampleQuoteData.name},</h2>
-              <p>We've received your quote request and will get back to you within 24 hours with a detailed estimate.</p>
+              <p>We've received your quote request and will get back to you within 48 hours with a detailed estimate.</p>
               
               <div class="booking-details">
                 <h3>Quote Request Details</h3>
@@ -1074,11 +1071,6 @@ app.get('/api/email-preview', async (req, res) => {
                   <span class="detail-value">${sampleQuoteData.address}</span>
                 </div>
                 
-                <div class="detail-row">
-                  <span class="detail-label">Property Size:</span>
-                  <span class="detail-value">${sampleQuoteData.yardAcreage}</span>
-                </div>
-                
                 <div class="services-list">
                   <div class="detail-row">
                     <span class="detail-label">Services Requested:</span>
@@ -1100,7 +1092,7 @@ app.get('/api/email-preview', async (req, res) => {
               <h3>What's Next?</h3>
               <ul>
                 <li>We'll review your request and prepare a detailed quote</li>
-                <li>You'll receive our estimate within 24 hours</li>
+                <li>You'll receive our estimate within 48 hours</li>
               </ul>
               
               <p>If you have any questions or need to make changes to your request, please contact us at:</p>
@@ -1126,8 +1118,7 @@ app.get('/api/email-preview', async (req, res) => {
         phone: '(555) 123-4567',
         address: '123 Main Street, Athens, GA 30601',
         services: ['Mulching', 'Brush removal', 'Log splitting'],
-        yardAcreage: '0.5 acres',
-        notes: 'Please contact me in the morning.',
+          notes: 'Please contact me in the morning. Updated preview.',
         leafHaul: true,
         submittedAt: new Date().toISOString()
       };
@@ -1186,11 +1177,6 @@ app.get('/api/email-preview', async (req, res) => {
                 <div class="detail-row">
                   <span class="detail-label">Service Address:</span>
                   <span class="detail-value">${sampleQuoteData.address}</span>
-                </div>
-                
-                <div class="detail-row">
-                  <span class="detail-label">Property Size:</span>
-                  <span class="detail-value">${sampleQuoteData.yardAcreage}</span>
                 </div>
                 
                 <div class="services-list">
@@ -1346,12 +1332,6 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
               <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
             </div>
             
-            ${(bookingData.yardAcreage) ? `
-            <div class="detail-row">
-              <span class="detail-label">Approximate Yard Acreage:</span>
-              <span class="detail-value">${bookingData.yardAcreage}</span>
-            </div>
-            ` : ''}
             
             ${(bookingData.services && bookingData.services.length > 0) ? `
             <div class="services-list">
@@ -1486,12 +1466,6 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
               <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
             </div>
             
-            ${(bookingData.yardAcreage) ? `
-            <div class="detail-row">
-              <span class="detail-label">Approximate Yard Acreage:</span>
-              <span class="detail-value">${bookingData.yardAcreage}</span>
-            </div>
-            ` : ''}
             
             ${(bookingData.services && bookingData.services.length > 0) ? `
             <div class="services-list">
@@ -1664,12 +1638,6 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
               <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
             </div>
             
-            ${(bookingData.yardAcreage) ? `
-            <div class="detail-row">
-              <span class="detail-label">Approximate Yard Acreage:</span>
-              <span class="detail-value">${bookingData.yardAcreage}</span>
-            </div>
-            ` : ''}
             
             ${(bookingData.services && bookingData.services.length > 0) ? `
             <div class="services-list">
@@ -1816,12 +1784,6 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
               <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
             </div>
             
-            ${(bookingData.yardAcreage) ? `
-            <div class="detail-row">
-              <span class="detail-label">Approximate Yard Acreage:</span>
-              <span class="detail-value">${bookingData.yardAcreage}</span>
-            </div>
-            ` : ''}
             
             ${(bookingData.services && bookingData.services.length > 0) ? `
             <div class="services-list">
@@ -2692,11 +2654,6 @@ app.post('/api/send-quote-request', async (req, res) => {
                   <span class="detail-value">${quoteData.address}</span>
                 </div>
                 
-                <div class="detail-row">
-                  <span class="detail-label">Property Size:</span>
-                  <span class="detail-value">${quoteData.yardAcreage}</span>
-                </div>
-                
                 <div class="services-list">
                   <div class="detail-row">
                     <span class="detail-label">Services Requested:</span>
@@ -2769,7 +2726,7 @@ app.post('/api/send-quote-request', async (req, res) => {
             
             <div class="content">
               <h2>Hello ${quoteData.name},</h2>
-              <p>We've received your quote request and will get back to you within 24 hours with a detailed estimate.</p>
+              <p>We've received your quote request and will get back to you within 48 hours with a detailed estimate.</p>
               
               <div class="booking-details">
                 <h3>Your Request Summary</h3>
@@ -2777,11 +2734,6 @@ app.post('/api/send-quote-request', async (req, res) => {
                 <div class="detail-row">
                   <span class="detail-label">Service Address:</span>
                   <span class="detail-value">${quoteData.address}</span>
-                </div>
-                
-                <div class="detail-row">
-                  <span class="detail-label">Property Size:</span>
-                  <span class="detail-value">${quoteData.yardAcreage}</span>
                 </div>
                 
                 <div class="services-list">
@@ -2798,7 +2750,7 @@ app.post('/api/send-quote-request', async (req, res) => {
               <h3>What's Next?</h3>
               <ul>
                 <li>We'll review your request and prepare a detailed quote</li>
-                <li>You'll receive our estimate within 24 hours</li>
+                <li>You'll receive our estimate within 48 hours</li>
               </ul>
               
               <p>In the meantime, if you have any questions, feel free to contact us:</p>
