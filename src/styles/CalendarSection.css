@@ -534,8 +534,10 @@
   }
 
   .time-slots-preview {
-    bottom: 2px;
+    bottom: 4px !important;
     width: calc(100% - 4px);
+    max-height: 20px !important;
+    overflow: hidden !important;
   }
 
   .calendar-legend {
@@ -632,7 +634,7 @@
   }
 
   .time-slots-preview {
-    bottom: 1px !important;
+    bottom: 4px !important;
     width: calc(100% - 2px) !important;
     display: flex !important;
     flex-direction: column !important;
@@ -640,11 +642,12 @@
   }
 
   .time-slot-preview {
-    font-size: 0.45rem !important;
+    font-size: 0.4rem !important;
     padding: 1px 2px !important;
-    margin: 0.3px 0 !important;
-    min-width: 20px !important;
+    margin: 0.2px 0 !important;
+    min-width: 18px !important;
     text-align: center !important;
+    line-height: 1 !important;
   }
 
   .calendar-legend {
@@ -732,7 +735,7 @@
   }
 
   .time-slots-preview {
-    bottom: 1px;
+    bottom: 4px;
     width: calc(100% - 2px);
   }
 
@@ -772,9 +775,9 @@
 /* Time Slots Calendar Styling */
 .time-slots-preview {
   position: absolute;
-  bottom: 4px;
-  left: 4px;
-  right: 4px;
+  bottom: 20px;
+  left: 2px;
+  right: 2px;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -836,6 +839,21 @@
 .time-24hr {
   font-size: 0.8rem;
   opacity: 0.8;
+}
+
+/* iOS safe area support */
+@supports (padding: max(0px)) {
+  .calendar-day {
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+  }
+  
+  .time-slots-preview {
+    bottom: max(4px, calc(4px + env(safe-area-inset-bottom))) !important;
+  }
+  
+  .adjust-bookings {
+    bottom: max(4px, calc(4px + env(safe-area-inset-bottom))) !important;
+  }
 }
 
 /* Mobile responsive time slots */
@@ -921,17 +939,18 @@
   .time-slots-preview {
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.5px !important;
+    gap: 0.3px !important;
     align-items: center !important;
-    bottom: 2px !important;
+    bottom: -4px !important;
     left: 2px !important;
     right: 2px !important;
     transform: none !important;
-    max-height: none !important;
-    overflow: visible !important;
+    max-height: 22px !important;
+    overflow: hidden !important;
     width: auto !important;
     position: absolute !important;
     z-index: 3 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
   }
   
   /* Ensure day icons are always visible on mobile */
