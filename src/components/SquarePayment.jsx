@@ -24,6 +24,35 @@ export default function SquarePayment({
   const [cardErrors, setCardErrors] = useState({});
 
   useEffect(() => {
+    const loadSquareSDK = () => {
+      // Determine which SDK to load based on application ID
+      const appId = import.meta.env.VITE_SQUARE_APPLICATION_ID;
+      const isSandbox = appId && appId.includes('sandbox');
+      const squareUrl = isSandbox 
+        ? 'https://sandbox.web.squarecdn.com/v1/square.js'
+        : 'https://web.squarecdn.com/v1/square.js';
+      
+      // Check if Square SDK is already loaded
+      if (window.Square) {
+        initializeSquare();
+        return;
+      }
+      
+      // Load the appropriate Square SDK
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.src = squareUrl;
+      script.onload = () => {
+        console.log(`Square SDK loaded: ${isSandbox ? 'sandbox' : 'production'}`);
+        waitForSquare();
+      };
+      script.onerror = () => {
+        console.error('Failed to load Square SDK');
+        onError('Payment system failed to load. Please refresh the page.');
+      };
+      document.head.appendChild(script);
+    };
+
     const waitForSquare = (retries = 0, maxRetries = 10) => {
       if (window.Square) {
         initializeSquare();
@@ -50,7 +79,7 @@ export default function SquarePayment({
       }
     };
 
-    waitForSquare();
+    loadSquareSDK();
   }, [onError]);
 
   useEffect(() => {

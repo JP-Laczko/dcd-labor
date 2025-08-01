@@ -945,7 +945,8 @@ app.post('/api/send-email', async (req, res) => {
       await connectToMongo();
     }
     const { bookingData } = req.body;
-    console.log('📧 POST /api/send-email - Sending email for:', bookingData.customer?.name || 'unknown customer');
+    console.log('📧 POST /api/send-email - Sending email for:', bookingData.customer?.name || bookingData.name || 'unknown customer');
+    console.log('📧 BookingData structure:', JSON.stringify(bookingData, null, 2));
     
     if (!process.env.RESEND_API_KEY || !process.env.DCD_EMAIL) {
       return res.status(500).json({ error: 'Email configuration missing' });
@@ -1262,7 +1263,7 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
     '4': '4-Man Crew'
   };
 
-  const rateRange = await getRateRange(bookingData.service?.teamSize || bookingData.crewSize);
+  const rateRange = await getRateRange(bookingData.service?.crewSize || bookingData.crewSize);
 
   return `
     <!DOCTYPE html>
@@ -1314,7 +1315,7 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
             
             <div class="detail-row">
               <span class="detail-label">Service Address:</span>
-              <span class="detail-value">${bookingData.service?.address || bookingData.address}</span>
+              <span class="detail-value">${bookingData.service?.address || bookingData.customer?.address || bookingData.address || 'Not specified'}</span>
             </div>
             
             <div class="detail-row">
@@ -1329,7 +1330,7 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
             
             <div class="detail-row">
               <span class="detail-label">Crew Size:</span>
-              <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
+              <span class="detail-value">${crewSizeLabels[bookingData.service?.crewSize || bookingData.crewSize] || bookingData.service?.crewSize || bookingData.crewSize}</span>
             </div>
             
             
@@ -1391,7 +1392,7 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
     '4': '4-Man Crew'
   };
 
-  const rateRange = await getRateRange(bookingData.service?.teamSize || bookingData.crewSize);
+  const rateRange = await getRateRange(bookingData.service?.crewSize || bookingData.crewSize);
 
   return `
     <!DOCTYPE html>
@@ -1444,7 +1445,7 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
             
             <div class="detail-row">
               <span class="detail-label">Service Address:</span>
-              <span class="detail-value">${bookingData.service?.address || bookingData.address}</span>
+              <span class="detail-value">${bookingData.service?.address || bookingData.customer?.address || bookingData.address || 'Not specified'}</span>
             </div>
           </div>
           
@@ -1463,7 +1464,7 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
             
             <div class="detail-row">
               <span class="detail-label">Crew Size:</span>
-              <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
+              <span class="detail-value">${crewSizeLabels[bookingData.service?.crewSize || bookingData.crewSize] || bookingData.service?.crewSize || bookingData.crewSize}</span>
             </div>
             
             
@@ -1519,12 +1520,16 @@ async function generateDCDEmailPreview(bookingData, dcdEmail) {
 // Helper function to get rate range based on crew size from database
 async function getRateRange(crewSize) {
   try {
+    console.log('💰 getRateRange called with:', { crewSize, type: typeof crewSize });
+    
     // Ensure database connection
     if (!db) {
       await connectToMongo();
     }
     const collection = db.collection('team_rates');
     const ratesDoc = await collection.findOne({});
+    
+    console.log('💰 Rates from database:', ratesDoc);
     
     if (ratesDoc) {
       // Map numeric crew size to database key format
@@ -1536,6 +1541,13 @@ async function getRateRange(crewSize) {
       
       const dbKey = crewSizeMapping[crewSize?.toString()];
       const rate = ratesDoc[dbKey];
+      
+      console.log('💰 Rate lookup:', { 
+        crewSize, 
+        crewSizeString: crewSize?.toString(), 
+        dbKey, 
+        rate 
+      });
       
       if (rate) {
         return `$${rate}/hour`;
@@ -1568,7 +1580,7 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
     '4': '4-Man Crew'
   };
 
-  const rateRange = await getRateRange(bookingData.service?.teamSize || bookingData.crewSize);
+  const rateRange = await getRateRange(bookingData.service?.crewSize || bookingData.crewSize);
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -1620,7 +1632,7 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
             
             <div class="detail-row">
               <span class="detail-label">Service Address:</span>
-              <span class="detail-value">${bookingData.service?.address || bookingData.address}</span>
+              <span class="detail-value">${bookingData.service?.address || bookingData.customer?.address || bookingData.address || 'Not specified'}</span>
             </div>
             
             <div class="detail-row">
@@ -1635,7 +1647,7 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
             
             <div class="detail-row">
               <span class="detail-label">Crew Size:</span>
-              <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
+              <span class="detail-value">${crewSizeLabels[bookingData.service?.crewSize || bookingData.crewSize] || bookingData.service?.crewSize || bookingData.crewSize}</span>
             </div>
             
             
@@ -1708,7 +1720,7 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
     '4': '4-Man Crew'
   };
 
-  const rateRange = await getRateRange(bookingData.service?.teamSize || bookingData.crewSize);
+  const rateRange = await getRateRange(bookingData.service?.crewSize || bookingData.crewSize);
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -1762,7 +1774,7 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
             
             <div class="detail-row">
               <span class="detail-label">Service Address:</span>
-              <span class="detail-value">${bookingData.service?.address || bookingData.address}</span>
+              <span class="detail-value">${bookingData.service?.address || bookingData.customer?.address || bookingData.address || 'Not specified'}</span>
             </div>
           </div>
           
@@ -1781,7 +1793,7 @@ async function sendDCDNotification(bookingData, apiKey, dcdEmail) {
             
             <div class="detail-row">
               <span class="detail-label">Crew Size:</span>
-              <span class="detail-value">${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize}</span>
+              <span class="detail-value">${crewSizeLabels[bookingData.service?.crewSize || bookingData.crewSize] || bookingData.service?.crewSize || bookingData.crewSize}</span>
             </div>
             
             
@@ -1876,7 +1888,7 @@ async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
     '3': '3-Man Crew', 
     '4': '4-Man Crew'
   };
-  const rateRange = await getRateRange(bookingData.service?.teamSize || bookingData.crewSize);
+  const rateRange = await getRateRange(bookingData.service?.crewSize || bookingData.crewSize);
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -1918,7 +1930,7 @@ async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
             <h3>📋 Service Summary</h3>
             <div style="padding: 15px 0;">
               <div style="margin: 8px 0;"><strong>Service Date:</strong> ${bookingData.service?.date ? new Date(bookingData.service.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</div>
-              <div style="margin: 8px 0;"><strong>Crew Size:</strong> ${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize || 'N/A'}</div>
+              <div style="margin: 8px 0;"><strong>Crew Size:</strong> ${crewSizeLabels[bookingData.service?.crewSize || bookingData.crewSize] || bookingData.service?.crewSize || bookingData.crewSize || 'N/A'}</div>
               ${bookingData.service?.address ? `<div style="margin: 8px 0;"><strong>Service Address:</strong> ${bookingData.service.address}</div>` : ''}
               ${bookingData.services && bookingData.services.length > 0 ? `<div style="margin: 8px 0;"><strong>Services Completed:</strong><br>${bookingData.services.map(service => `&nbsp;&nbsp;• ${service}`).join('<br>')}</div>` : ''}
               
@@ -2010,7 +2022,7 @@ async function generateGoogleReviewEmailPreview(bookingData, dcdEmail) {
     '3': '3-Man Crew', 
     '4': '4-Man Crew'
   };
-  const rateRange = await getRateRange(bookingData.service?.teamSize || bookingData.crewSize);
+  const rateRange = await getRateRange(bookingData.service?.crewSize || bookingData.crewSize);
 
   return `
     <!DOCTYPE html>
@@ -2052,7 +2064,7 @@ async function generateGoogleReviewEmailPreview(bookingData, dcdEmail) {
             <h3>📋 Service Summary</h3>
             <div style="padding: 15px 0;">
               <div style="margin: 8px 0;"><strong>Service Date:</strong> ${bookingData.service?.date ? new Date(bookingData.service.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</div>
-              <div style="margin: 8px 0;"><strong>Crew Size:</strong> ${crewSizeLabels[bookingData.service?.teamSize || bookingData.crewSize] || bookingData.service?.teamSize || bookingData.crewSize || 'N/A'}</div>
+              <div style="margin: 8px 0;"><strong>Crew Size:</strong> ${crewSizeLabels[bookingData.service?.crewSize || bookingData.crewSize] || bookingData.service?.crewSize || bookingData.crewSize || 'N/A'}</div>
               ${bookingData.service?.address ? `<div style="margin: 8px 0;"><strong>Service Address:</strong> ${bookingData.service.address}</div>` : ''}
               ${bookingData.services && bookingData.services.length > 0 ? `<div style="margin: 8px 0;"><strong>Services Completed:</strong><br>${bookingData.services.map(service => `&nbsp;&nbsp;• ${service}`).join('<br>')}</div>` : ''}
               
@@ -2472,24 +2484,53 @@ app.post('/api/create-booking-with-payment', async (req, res) => {
       });
     }
     
-    // Count existing bookings for this date
+    // Check if the specific time slot is already booked
+    const requestedTimeSlot = bookingData.service.timeSlot;
+    if (!requestedTimeSlot) {
+      console.log('🚫 Booking blocked: No time slot specified');
+      return res.status(400).json({ 
+        error: 'Time slot is required for booking.',
+        refundNeeded: true 
+      });
+    }
+    
     const bookingCollection = db.collection('bookings');
-    const existingBookings = await bookingCollection.countDocuments({
+    const existingBookingForSlot = await bookingCollection.findOne({
       $or: [
-        { 'service.date': serviceDate },
-        { 'date': serviceDate }
+        { 
+          'service.date': dateString,
+          'service.timeSlot': requestedTimeSlot
+        },
+        { 
+          'date': dateString,
+          'timeSlot': requestedTimeSlot  
+        }
       ]
     });
     
-    if (existingBookings >= allowedBookings) {
-      console.log('🚫 Booking blocked: No slots remaining', { existing: existingBookings, allowed: allowedBookings });
+    console.log('📊 Time slot availability check:', {
+      dateString: dateString,
+      requestedTimeSlot: requestedTimeSlot,
+      slotAlreadyBooked: !!existingBookingForSlot,
+      existingBookingId: existingBookingForSlot?.bookingId
+    });
+    
+    if (existingBookingForSlot) {
+      console.log('🚫 Booking blocked: Time slot already booked', { 
+        timeSlot: requestedTimeSlot,
+        existingBookingId: existingBookingForSlot.bookingId 
+      });
       return res.status(400).json({ 
-        error: 'This date is fully booked. No slots remaining.',
+        error: `The ${requestedTimeSlot} time slot is already booked for this date.`,
         refundNeeded: true 
       });
     }
 
-    console.log('✅ Availability check passed:', { existing: existingBookings, allowed: allowedBookings, remaining: allowedBookings - existingBookings });
+    console.log('✅ Time slot availability check passed:', { 
+      dateString: dateString, 
+      timeSlot: requestedTimeSlot,
+      available: true 
+    });
 
     const collection = db.collection('bookings');
     

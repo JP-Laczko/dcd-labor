@@ -338,7 +338,8 @@ export default function PaymentBookingModal({
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
 
       const result = await response.json();
