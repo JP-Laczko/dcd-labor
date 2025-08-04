@@ -88,7 +88,7 @@ export default function HeroCarousel() {
           letterSpacing: "-0.02em",
           textShadow: "0 6px 16px rgba(0,0,0,0.9), 0 3px 6px rgba(0,0,0,0.8)"
         }}>
-          Local student powered labor
+          Modern Labor, Old-School Work Ethic
         </h1>
         <p style={{ 
           fontSize: "clamp(0.8rem, 2.2vw, 1.7rem)", 

@@ -1104,8 +1104,8 @@ app.get('/api/email-preview', async (req, res) => {
             </div>
             
             <div class="footer">
-              <p>DCD Labor - Local Student Powered Labor<br>
-              Morris County, New Jersey | ${dcdEmail}</p>
+              <p>DCD Labor - Modern Labor, Old-School Work Ethic<br>
+              North Jersey | ${dcdEmail}</p>
             </div>
           </div>
         </body>
@@ -1210,7 +1210,7 @@ app.get('/api/email-preview', async (req, res) => {
             </div>
             
             <div class="footer">
-              <p>DCD Labor - Local Student Powered Labor<br>
+              <p>DCD Labor - Modern Labor, Old-School Work Ethic<br>
               This is an automated message from the DCD Labor website quote request form.</p>
             </div>
           </div>
@@ -2725,7 +2725,7 @@ app.post('/api/send-quote-request', async (req, res) => {
             </div>
             
             <div class="footer">
-              <p>DCD Labor - Local Student Powered Labor<br>
+              <p>DCD Labor - Modern Labor, Old-School Work Ethic<br>
               This is an automated message from the DCD Labor website quote request form.</p>
             </div>
           </div>
@@ -2810,8 +2810,8 @@ app.post('/api/send-quote-request', async (req, res) => {
             </div>
             
             <div class="footer">
-              <p>DCD Labor - Local Student Powered Labor<br>
-              Morris County, New Jersey | ${dcdEmail}</p>
+              <p>DCD Labor - Modern Labor, Old-School Work Ethic<br>
+              North Jersey | ${dcdEmail}</p>
             </div>
           </div>
         </body>

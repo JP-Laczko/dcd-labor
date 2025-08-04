@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import dcdStory1 from "../assets/images/DCDStory1.jpg";
 import dcdStory2 from "../assets/images/DCDStory2.jpg";
 import dcdStory3 from "../assets/images/DCDStory3.jpg";
@@ -83,6 +84,7 @@ export default function OurStory() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

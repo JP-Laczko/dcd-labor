@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import "../styles/Contact.css";
 
 export default function Contact() {
@@ -33,7 +34,7 @@ export default function Contact() {
               <div className="contact-card">
                 <div className="contact-icon">📍</div>
                 <h3>Service Area</h3>
-                <p>Morris County, New Jersey</p>
+                <p>North Jersey</p>
               </div>
             </div>
 
@@ -59,6 +60,7 @@ export default function Contact() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

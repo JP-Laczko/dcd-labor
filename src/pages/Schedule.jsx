@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import PaymentBookingModal from "../components/PaymentBookingModal";
 import "../styles/Schedule.css";
 import rateService from "../services/rateService";
@@ -421,7 +422,7 @@ export default function Schedule() {
           </form>
         </div>
       </div>
-
+      <Footer />
     </div>
   );
 }

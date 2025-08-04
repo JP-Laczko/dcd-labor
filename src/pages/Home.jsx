@@ -107,7 +107,7 @@ export default function Home() {
             <div className="founder-note">
               <div className="quote-icon">✨</div>
               <p className="closing-message">
-                We're proud of the way we work, and we think you'll be proud you hired us.
+                We built this company on hard work and integrity. Thanks for letting us prove it to you.
               </p>
               <p className="signature">
                 — The DCD Co-Founders

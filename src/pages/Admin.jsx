@@ -3,6 +3,7 @@ import '../styles/Admin.css';
 import rateService from '../services/rateService';
 import mongoService from '../services/mongoService';
 import AdminCalendarTimeSlots from '../components/AdminCalendarTimeSlots';
+import Footer from '../components/Footer';
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -231,6 +232,7 @@ export default function Admin() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

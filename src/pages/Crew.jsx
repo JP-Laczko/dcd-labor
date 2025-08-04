@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/Admin.css'; // Reuse admin styles for now
 import CrewCalendar from '../components/CrewCalendar';
+import Footer from '../components/Footer';
 
 export default function Crew() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -65,6 +66,7 @@ export default function Crew() {
       <div className="admin-content">
         <CrewCalendar />
       </div>
+      <Footer />
     </div>
   );
 }
