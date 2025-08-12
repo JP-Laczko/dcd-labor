@@ -1293,7 +1293,7 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
         
         <div class="content">
           <h2>Hello ${bookingData.customer?.name || bookingData.name},</h2>
-          <p>We've received your booking request and will contact you within 24 hours to confirm your appointment. Your $80 deposit has been processed to secure your booking.</p>
+          <p>We've received your booking request and will contact you within 24 hours to confirm your appointment details.</p>
           
           <div class="booking-details">
             <h3>Booking Details</h3>
@@ -1363,9 +1363,9 @@ async function generateCustomerEmailPreview(bookingData, dcdEmail) {
           
           <h3>What's Next?</h3>
           <ul>
-            <li>We'll text you within 24 hours to confirm your appointment</li>
-            <li>Your $80 deposit has been processed to secure your booking</li>
-            <li>Final payment is due upon completion of services</li>
+            <li>We'll contact you within 24 hours to confirm your appointment</li>
+            <li>Payment will be collected in person when service is complete</li>
+            <li>Our crew will arrive at your scheduled time ready to work</li>
           </ul>
           
           <p>If you have any questions or need to make changes to your booking, please contact us at:</p>
@@ -1610,7 +1610,7 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
         
         <div class="content">
           <h2>Hello ${bookingData.customer?.name || bookingData.name},</h2>
-          <p>We've received your booking request and will contact you within 24 hours to confirm your appointment. Your $80 deposit has been processed to secure your booking.</p>
+          <p>We've received your booking request and will contact you within 24 hours to confirm your appointment details.</p>
           
           <div class="booking-details">
             <h3>Booking Details</h3>
@@ -1680,9 +1680,9 @@ async function sendCustomerConfirmation(bookingData, apiKey, dcdEmail) {
           
           <h3>What's Next?</h3>
           <ul>
-            <li>We'll text you within 24 hours to confirm your appointment</li>
-            <li>Your $80 deposit has been processed to secure your booking</li>
-            <li>Final payment is due upon completion of services</li>
+            <li>We'll contact you within 24 hours to confirm your appointment</li>
+            <li>Payment will be collected in person when service is complete</li>
+            <li>Our crew will arrive at your scheduled time ready to work</li>
           </ul>
           
           <p>If you have any questions or need to make changes to your booking, please contact us at:</p>
@@ -1934,17 +1934,7 @@ async function sendGoogleReviewEmail(bookingData, apiKey, dcdEmail) {
               ${bookingData.service?.address ? `<div style="margin: 8px 0;"><strong>Service Address:</strong> ${bookingData.service.address}</div>` : ''}
               ${bookingData.services && bookingData.services.length > 0 ? `<div style="margin: 8px 0;"><strong>Services Completed:</strong><br>${bookingData.services.map(service => `&nbsp;&nbsp;• ${service}`).join('<br>')}</div>` : ''}
               
-              ${bookingData.finalPaymentDetails ? `
-              <div style="margin: 16px 0; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #22c55e;">
-                <h4 style="margin: 0 0 8px 0; color: #16a34a;">💰 Final Payment Breakdown</h4>
-                <div style="margin: 4px 0;"><strong>Materials Cost:</strong> $${bookingData.finalPaymentDetails.materialsCost.toFixed(2)}</div>
-                <div style="margin: 4px 0;"><strong>Labor:</strong> ${bookingData.finalPaymentDetails.serviceHours} hours × $${bookingData.finalPaymentDetails.crewRate}/hr = $${bookingData.finalPaymentDetails.laborCost.toFixed(2)}</div>
-                <div style="margin: 4px 0; border-top: 1px solid #e5e7eb; padding-top: 4px;"><strong>Subtotal:</strong> $${bookingData.finalPaymentDetails.subtotal.toFixed(2)}</div>
-                <div style="margin: 4px 0;"><strong>Deposit Paid:</strong> -$${bookingData.finalPaymentDetails.deposit.toFixed(2)}</div>
-                <div style="margin: 4px 0;"><strong>Final Payment:</strong> $${bookingData.finalPaymentDetails.finalAmount.toFixed(2)}</div>
-                <div style="margin: 8px 0; padding-top: 8px; border-top: 2px solid #22c55e; font-size: 16px;"><strong>Total Service Cost: $${bookingData.finalPaymentDetails.totalPaid.toFixed(2)}</strong></div>
-              </div>
-              ` : `<div style="margin: 8px 0;"><strong>Service Rate:</strong> ${rateRange}</div>`}
+              <div style="margin: 8px 0;"><strong>Service Rate:</strong> ${rateRange}</div>
             </div>
           </div>
 
@@ -2068,17 +2058,7 @@ async function generateGoogleReviewEmailPreview(bookingData, dcdEmail) {
               ${bookingData.service?.address ? `<div style="margin: 8px 0;"><strong>Service Address:</strong> ${bookingData.service.address}</div>` : ''}
               ${bookingData.services && bookingData.services.length > 0 ? `<div style="margin: 8px 0;"><strong>Services Completed:</strong><br>${bookingData.services.map(service => `&nbsp;&nbsp;• ${service}`).join('<br>')}</div>` : ''}
               
-              ${bookingData.finalPaymentDetails ? `
-              <div style="margin: 16px 0; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #22c55e;">
-                <h4 style="margin: 0 0 8px 0; color: #16a34a;">💰 Final Payment Breakdown</h4>
-                <div style="margin: 4px 0;"><strong>Materials Cost:</strong> $${bookingData.finalPaymentDetails.materialsCost.toFixed(2)}</div>
-                <div style="margin: 4px 0;"><strong>Labor:</strong> ${bookingData.finalPaymentDetails.serviceHours} hours × $${bookingData.finalPaymentDetails.crewRate}/hr = $${bookingData.finalPaymentDetails.laborCost.toFixed(2)}</div>
-                <div style="margin: 4px 0; border-top: 1px solid #e5e7eb; padding-top: 4px;"><strong>Subtotal:</strong> $${bookingData.finalPaymentDetails.subtotal.toFixed(2)}</div>
-                <div style="margin: 4px 0;"><strong>Deposit Paid:</strong> -$${bookingData.finalPaymentDetails.deposit.toFixed(2)}</div>
-                <div style="margin: 4px 0;"><strong>Final Payment:</strong> $${bookingData.finalPaymentDetails.finalAmount.toFixed(2)}</div>
-                <div style="margin: 8px 0; padding-top: 8px; border-top: 2px solid #22c55e; font-size: 16px;"><strong>Total Service Cost: $${bookingData.finalPaymentDetails.totalPaid.toFixed(2)}</strong></div>
-              </div>
-              ` : `<div style="margin: 8px 0;"><strong>Service Rate:</strong> ${rateRange}</div>`}
+              <div style="margin: 8px 0;"><strong>Service Rate:</strong> ${rateRange}</div>
             </div>
           </div>
 

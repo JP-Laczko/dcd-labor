@@ -189,6 +189,52 @@ html {
   margin-top: 8px;
 }
 
+/* Payment Info Section Styling */
+.payment-info-section {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #0ea5e9;
+  border-radius: 12px;
+  margin-top: 20px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.1);
+}
+
+.payment-info-header {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  padding: 12px 20px;
+  margin: 0;
+}
+
+.payment-info-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.payment-info-content {
+  padding: 16px 20px;
+  background: white;
+}
+
+.payment-info-content p {
+  margin: 0 0 12px 0;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.payment-info-content p:last-child {
+  margin-bottom: 0;
+}
+
+.payment-info-content strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
 .modal-actions {
   display: flex;
   gap: 12px;
@@ -197,6 +243,18 @@ html {
   border-top: 1px solid #e5e7eb;
   background: white;
   flex-shrink: 0;
+}
+
+/* Improved booking modal actions with even button spacing */
+.booking-modal-actions {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.booking-modal-actions .cancel-button,
+.booking-modal-actions .submit-button {
+  flex: 1;
+  min-width: 120px;
 }
 
 .cancel-button {

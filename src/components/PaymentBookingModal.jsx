@@ -3,7 +3,6 @@ import mongoService from '../services/mongoService';
 import emailService from '../services/emailService';
 import rateService from '../services/rateService';
 import timeSlotUtils from '../utils/timeSlotUtils';
-import SquarePayment from './SquarePayment';
 import { FaCalendarAlt, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
 import '../styles/BookingModal.css';
 
@@ -15,7 +14,7 @@ export default function PaymentBookingModal({
   onBookingChange,
   preFilledData = null
 }) {
-  const [step, setStep] = useState(1); // 1: booking form, 2: payment, 3: confirmation
+  const [step, setStep] = useState(1); // 1: booking form, 2: confirmation
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -45,7 +44,6 @@ export default function PaymentBookingModal({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentResult, setPaymentResult] = useState(null);
-  const [availabilityCheck, setAvailabilityCheck] = useState({ checking: false, available: true, error: null });
 
   // Hourly Services (simple tasks)
   const hourlyServices = [
@@ -64,12 +62,11 @@ export default function PaymentBookingModal({
     "Pressure Washing"
   ];
 
-  const depositAmount = 80; // Fixed deposit amount
 
   useEffect(() => {
     if (isOpen) {
       // Reset state when modal opens
-      setStep(preFilledData ? 2 : 1); // Skip to payment if pre-filled data provided
+      setStep(1); // Always start with booking form
       // Set form data with time slot information
       const baseFormData = {
         name: '',
@@ -92,13 +89,6 @@ export default function PaymentBookingModal({
       });
       setErrors({});
       setPaymentResult(null);
-      
-      // If coming from Schedule page with pre-filled data, start with availability check
-      if (preFilledData && selectedDate) {
-        setAvailabilityCheck({ checking: true, available: true, error: null });
-      } else {
-        setAvailabilityCheck({ checking: false, available: true, error: null });
-      }
 
       // Load rates
       const loadRates = async () => {
@@ -119,20 +109,10 @@ export default function PaymentBookingModal({
       };
       
       loadRates();
-      
-      // If pre-filled data, immediately check availability
-      if (preFilledData && selectedDate) {
-        checkAvailability();
-      }
     }
   }, [isOpen, preFilledData]);
 
-  // Check availability when step changes to payment
-  useEffect(() => {
-    if (step === 2 && selectedDate) {
-      checkAvailability();
-    }
-  }, [step, selectedDate]);
+  // Remove payment step availability check
 
   // Prevent body scroll and shaking when modal is open
   useEffect(() => {
@@ -148,106 +128,6 @@ export default function PaymentBookingModal({
     };
   }, [isOpen]);
 
-  const checkAvailability = async () => {
-    setAvailabilityCheck({ checking: true, available: true, error: null });
-    
-    try {
-      const dateString = selectedDate.toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
-      
-      console.log('🗓️ Checking availability for:', {
-        selectedDate: selectedDate,
-        dateString: dateString,
-        today: today,
-        month: selectedDate.getMonth() + 1, // 1-based month
-        isAugust: selectedDate.getMonth() === 7 // August is month 7 (0-based)
-      });
-      
-      // FIRST CHECK: Block same-day booking
-      if (dateString === today) {
-        console.log('🗓️❌ Blocked: Same-day booking');
-        setAvailabilityCheck({ 
-          checking: false, 
-          available: false, 
-          error: 'Same-day booking is not available. Please select a future date.' 
-        });
-        return;
-      }
-      
-      // Get current availability
-      const availabilityResult = await mongoService.getAllCalendarAvailability();
-      const bookingsResult = await mongoService.getBookings();
-      
-      console.log('🗓️ Raw availability result:', {
-        success: availabilityResult.success,
-        availabilityCount: availabilityResult.availability?.length || 0,
-        allDates: availabilityResult.availability?.map(entry => ({
-          date: entry.date,
-          bookings: entry.bookings,
-          isAugust: entry.date?.startsWith('2024-08') || entry.date?.startsWith('2025-08')
-        })) || []
-      });
-      
-      if (!availabilityResult.success || !bookingsResult.success) {
-        console.log('🗓️❌ Failed to get availability or bookings data');
-        throw new Error('Failed to check availability');
-      }
-
-      // Calculate availability for the selected date
-      const calendarEntry = availabilityResult.availability
-        .find(entry => entry.date === dateString);
-      const allowedBookings = calendarEntry?.bookings || 0;
-      
-      console.log('🗓️ Calendar entry for date:', {
-        dateString: dateString,
-        calendarEntry: calendarEntry,
-        allowedBookings: allowedBookings,
-        foundInCalendar: !!calendarEntry
-      });
-      
-      const existingBookings = bookingsResult.bookings
-        .filter(booking => {
-          const bookingDate = new Date(booking.service?.date || booking.date);
-          const bookingDateString = bookingDate.toISOString().split('T')[0];
-          const matches = bookingDateString === dateString;
-          if (matches) {
-            console.log('🗓️ Found existing booking for this date:', {
-              bookingId: booking.bookingId,
-              customerName: booking.customer?.name,
-              bookingDate: bookingDateString
-            });
-          }
-          return matches;
-        }).length;
-
-      const slotsRemaining = allowedBookings - existingBookings;
-      
-      console.log('🗓️ Availability calculation:', {
-        dateString: dateString,
-        allowedBookings: allowedBookings,
-        existingBookings: existingBookings,
-        slotsRemaining: slotsRemaining,
-        available: slotsRemaining > 0
-      });
-      
-      if (slotsRemaining <= 0) {
-        setAvailabilityCheck({ 
-          checking: false, 
-          available: false, 
-          error: 'This date is no longer available. Please select a different date.' 
-        });
-      } else {
-        setAvailabilityCheck({ checking: false, available: true, error: null });
-      }
-    } catch (error) {
-      console.error('Error checking availability:', error);
-      setAvailabilityCheck({ 
-        checking: false, 
-        available: false, 
-        error: 'Unable to verify availability. Please try again.' 
-      });
-    }
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -294,55 +174,66 @@ export default function PaymentBookingModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleContinueToPayment = async () => {
-    if (validateForm()) {
-      setStep(2);
+  const handleSubmitBooking = async () => {
+    if (!validateForm()) {
+      return;
     }
-  };
 
-  const handlePaymentSuccess = async (paymentData) => {
     setIsSubmitting(true);
     
     try {
-      const bookingData = {
-        customer: {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          address: formData.address
-        },
-        service: {
-          date: selectedDate.toISOString().split('T')[0],
-          timeSlot: formData.timeSlot || selectedTimeSlot,
-          displayTime: formData.displayTime || (selectedTimeSlot ? timeSlotUtils.formatTimeForDisplay(selectedTimeSlot) : ''),
-          serviceType: formData.serviceType || 'hourly',
-          crewSize: parseInt(formData.crewSize),
-          hourlyRate: calculateHourlyRate(parseInt(formData.crewSize)),
-          yardAcreage: formData.yardAcreage,
-          services: formData.services,
-          notes: formData.notes,
-          leafHaul: formData.leafHaul
-        }
-      };
-
-      // Create booking with payment confirmation using the payment-aware endpoint
-      const response = await fetch('/api/create-booking-with-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bookingData,
-          paymentInfo: paymentData
-        })
+      // Debug logging
+      console.log('🔍 Booking submission debug:', {
+        selectedDate,
+        selectedTimeSlot,
+        formDataTimeSlot: formData.timeSlot,
+        formDataDisplayTime: formData.displayTime
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      // Validate selectedDate
+      if (!selectedDate || !(selectedDate instanceof Date) || isNaN(selectedDate.getTime())) {
+        console.error('❌ Invalid selectedDate:', selectedDate);
+        setPaymentResult({
+          success: false,
+          error: 'Invalid date selected. Please refresh and try again.'
+        });
+        setStep(2);
+        setIsSubmitting(false);
+        return;
       }
 
-      const result = await response.json();
+      const dateString = selectedDate.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Block same-day booking
+      if (dateString === today) {
+        setPaymentResult({
+          success: false,
+          error: 'Same-day booking is not available. Please select a future date.'
+        });
+        setStep(2);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const bookingData = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        date: dateString,
+        timeSlot: formData.timeSlot || selectedTimeSlot,
+        displayTime: formData.displayTime || (selectedTimeSlot ? (timeSlotUtils.formatTimeForDisplay ? timeSlotUtils.formatTimeForDisplay(selectedTimeSlot) : selectedTimeSlot) : ''),
+        serviceType: formData.serviceType || 'hourly',
+        crewSize: parseInt(formData.crewSize),
+        yardAcreage: formData.yardAcreage,
+        services: formData.services,
+        notes: formData.notes,
+        leafHaul: formData.leafHaul
+      };
+
+      // Create booking directly without payment
+      const result = await mongoService.createBooking(bookingData);
       
       if (result.success) {
         // Send confirmation emails
@@ -350,49 +241,37 @@ export default function PaymentBookingModal({
         
         // Set success result and go to confirmation
         setPaymentResult({
-            success: true,
-            bookingId: result.bookingId,
-            paymentInfo: paymentData
-          });
-          setStep(3);
-          onBookingChange();
-        } else {
-          setPaymentResult({
-            success: false,
-            error: result.error || 'Failed to create booking'
-          });
-          setStep(3);
-        }
-      } catch (error) {
-        console.error('Error creating booking:', error);
+          success: true,
+          bookingId: result.bookingId
+        });
+        setStep(2);
+        onBookingChange();
+      } else {
         setPaymentResult({
           success: false,
-          error: error.message || 'Failed to create booking'
+          error: result.error || 'Failed to create booking'
         });
-        setStep(3);
-      } finally {
-        setIsSubmitting(false);
+        setStep(2);
       }
-  };
-
-  const handlePaymentError = (error) => {
-    console.error('Payment error:', error);
-    setPaymentResult({
-      success: false,
-      error: error || 'Payment failed'
-    });
-    setStep(3);
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      setPaymentResult({
+        success: false,
+        error: error.message || 'Failed to create booking'
+      });
+      setStep(2);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBackToForm = () => {
     setStep(1);
-    setAvailabilityCheck({ checking: false, available: true, error: null });
   };
 
   const handleClose = () => {
     setStep(1);
     setPaymentResult(null);
-    setAvailabilityCheck({ checking: false, available: true, error: null });
     onClose();
   };
 
@@ -403,8 +282,6 @@ export default function PaymentBookingModal({
       case 1:
         return 'Book Your Service';
       case 2:
-        return 'Secure Payment';
-      case 3:
         return paymentResult?.success ? 'Booking Confirmed!' : 'Booking Failed';
       default:
         return 'Book Your Service';
@@ -568,125 +445,37 @@ export default function PaymentBookingModal({
           />
         </div>
 
-        <div className="deposit-info">
-          <h4>Payment Required</h4>
-          <p>A ${depositAmount} deposit is required to secure your booking. The deposit will be deducted from your final payment{formData.leafHaul ? '. Yard waste removal ($280) will be charged with the final payment' : ''}.</p>
+        <div className="payment-info-section">
+          <div className="payment-info-header">
+            <h4>💳 Payment Information</h4>
+          </div>
+          <div className="payment-info-content">
+            <p><strong>In-Person Payment:</strong> Payment will be collected when your service is completed.</p>
+            <p>We'll contact you within 24 hours to confirm your booking and arrange all the details.</p>
+          </div>
         </div>
 
         {errors.submit && (
           <div className="error-text submit-error">{errors.submit}</div>
         )}
 
-        <div className="modal-actions">
+        <div className="modal-actions booking-modal-actions">
           <button type="button" onClick={onClose} className="cancel-button">
             Cancel
           </button>
           <button 
             type="button" 
-            onClick={handleContinueToPayment}
+            onClick={handleSubmitBooking}
             className="submit-button"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Processing...' : 'Continue to Payment'}
+            {isSubmitting ? 'Creating Booking...' : 'Book Service'}
           </button>
         </div>
       </form>
     </div>
   );
 
-  const renderPaymentStep = () => (
-    <div className="modal-body payment-step">
-      {availabilityCheck.checking ? (
-        <div className="availability-checking">
-          <div className="loading-spinner"></div>
-          <p>Checking availability...</p>
-        </div>
-      ) : !availabilityCheck.available ? (
-        <div className="availability-error">
-          <FaExclamationTriangle className="error-icon" />
-          <h3>Date No Longer Available</h3>
-          <p>{availabilityCheck.error}</p>
-          <button 
-            onClick={handleClose} 
-            className="back-button"
-          >
-            Select Different Date
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="booking-summary">
-            <h3>Booking Summary</h3>
-            <div className="summary-item">
-              <span>Date:</span>
-              <span>{selectedDate.toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}</span>
-            </div>
-            <div className="summary-item">
-              <span>Name:</span>
-              <span>{formData.name}</span>
-            </div>
-            <div className="summary-item">
-              <span>Email:</span>
-              <span>{formData.email}</span>
-            </div>
-            <div className="summary-item">
-              <span>Phone:</span>
-              <span>{formData.phone}</span>
-            </div>
-            <div className="summary-item">
-              <span>Crew Size:</span>
-              <span>{formData.crewSize}-Person Crew</span>
-            </div>
-            <div className="summary-item">
-              <span>Services:</span>
-              <span>{formData.services.join(', ')}</span>
-            </div>
-            {formData.leafHaul && (
-              <div className="summary-item leaf-haul-item">
-                <span>Yard Waste Removal:</span>
-                <span>+$280</span>
-              </div>
-            )}
-            <div className="summary-item">
-              <span>Deposit:</span>
-              <span>${depositAmount}</span>
-            </div>
-            <div className="summary-item total-item">
-              <span><strong>Deposit Payment:</strong></span>
-              <span><strong>${depositAmount}</strong></span>
-            </div>
-            {formData.leafHaul && (
-              <div className="summary-note">
-                <small>* Yard waste removal ($280) will be charged with final payment</small>
-              </div>
-            )}
-          </div>
-
-          <div className="payment-section">
-            <SquarePayment
-            amount={depositAmount}
-            description={`$${depositAmount} deposit for landscaping service on ${selectedDate.toLocaleDateString()}`}
-            customerInfo={{
-              name: formData.name,
-              email: formData.email,
-              phone: formData.phone
-            }}
-            onSuccess={handlePaymentSuccess}
-            onError={handlePaymentError}
-            onCancel={handleBackToForm}
-            isProcessing={isSubmitting}
-            saveCard={true}
-          />
-          </div>
-        </>
-      )}
-    </div>
-  );
 
   const renderConfirmationStep = () => (
     <div className="modal-body confirmation-step">
@@ -698,7 +487,7 @@ export default function PaymentBookingModal({
           </div>
           
           <div className="confirmation-details">
-            <p>Your booking has been successfully created and your payment has been processed.</p>
+            <p>Your booking has been successfully created.</p>
             
             <div className="booking-info">
               <div className="info-item">
@@ -712,17 +501,14 @@ export default function PaymentBookingModal({
                   day: 'numeric' 
                 })}
               </div>
-              <div className="info-item">
-                <strong>Deposit Paid:</strong> ${paymentResult.paymentInfo?.amount || 80}
-              </div>
             </div>
 
             <div className="next-steps">
               <h4>What's Next?</h4>
               <ul>
                 <li>A confirmation email has been sent to {formData.email}</li>
-                <li><strong>Payment:</strong> Your deposit has been successfully charged</li>
-                <li>In production: We would text you within 24 hours to confirm appointment time</li>
+                <li><strong>Payment:</strong> Payment will be collected in person when service is complete</li>
+                <li>We will contact you within 24 hours to confirm appointment details</li>
               </ul>
             </div>
           </div>
@@ -737,41 +523,22 @@ export default function PaymentBookingModal({
         <>
           <div className="error-header">
             <FaExclamationTriangle className="error-icon" />
-            <h3>{paymentResult?.isAvailabilityError ? 'Date No Longer Available' : 'Booking Failed'}</h3>
+            <h3>Booking Failed</h3>
           </div>
           
           <div className="error-details">
-            {paymentResult?.isAvailabilityError ? (
-              <>
-                <p><strong>Your payment was processed, but the date is no longer available:</strong></p>
-                <p className="error-message">{paymentResult?.error}</p>
-                <p><strong>Important:</strong> Your deposit will be refunded automatically. Please select a different date for your booking.</p>
-                <p>If you have any questions, please contact us and reference your payment confirmation.</p>
-              </>
-            ) : (
-              <>
-                <p>There was an issue processing your booking:</p>
-                <p className="error-message">{paymentResult?.error}</p>
-                <p>Please try again or contact us for assistance.</p>
-              </>
-            )}
+            <p>There was an issue processing your booking:</p>
+            <p className="error-message">{paymentResult?.error}</p>
+            <p>Please try again or contact us for assistance.</p>
           </div>
 
           <div className="modal-actions">
-            {paymentResult?.isAvailabilityError ? (
-              <button onClick={handleClose} className="cancel-button">
-                Select Different Date
-              </button>
-            ) : (
-              <>
-                <button onClick={handleBackToForm} className="back-button">
-                  Try Again
-                </button>
-                <button onClick={handleClose} className="cancel-button">
-                  Close
-                </button>
-              </>
-            )}
+            <button onClick={handleBackToForm} className="back-button">
+              Try Again
+            </button>
+            <button onClick={handleClose} className="cancel-button">
+              Close
+            </button>
           </div>
         </>
       )}
@@ -780,15 +547,14 @@ export default function PaymentBookingModal({
 
   return (
     <div className="modal-overlay">
-      <div className={`modal-content payment-booking-modal ${step === 2 ? 'payment-modal' : ''}`}>
+      <div className={`modal-content payment-booking-modal`}>
         <div className="modal-header">
           <h2>{getModalTitle()}</h2>
           <button className="close-button" onClick={handleClose}>×</button>
         </div>
 
         {step === 1 && renderBookingForm()}
-        {step === 2 && renderPaymentStep()}
-        {step === 3 && renderConfirmationStep()}
+        {step === 2 && renderConfirmationStep()}
       </div>
     </div>
   );

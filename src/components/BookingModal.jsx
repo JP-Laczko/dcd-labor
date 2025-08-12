@@ -294,26 +294,54 @@ export default function BookingModal({
     }
   };
 
-  const handleChargeClick = () => {
+  const handleChargeClick = async () => {
     if (!booking) return;
     
-    console.log('🎯 BookingModal: Charge & Complete clicked, calling onFinalPayment');
-    
-    if (onFinalPayment) {
-      // Use the proper SquareFinalPayment component
-      onFinalPayment(booking);
-    } else {
-      // Fallback to old behavior if onFinalPayment not provided
-      const storedRate = booking.service?.hourlyRate;
-      const crewSizeKey = `${booking.service?.crewSize || 2}Man`;
-      const fallbackRate = rates[crewSizeKey] || 0;
-      
-      setChargeData({
-        materialsCost: '',
-        serviceHours: '',
-        crewRate: storedRate || fallbackRate
+    const confirmed = window.confirm(
+      `Complete and remove booking for ${booking.customer?.name || 'this customer'}?\n\nThis will:\n- Send a review request email to the customer\n- Remove the booking from the calendar\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setIsSubmitting(true);
+    try {
+      // Send review email to customer
+      const response = await fetch('/api/send-review-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingId: booking.bookingId,
+          bookingData: {
+            customer: booking.customer,
+            service: booking.service,
+            services: booking.service?.services,
+            name: booking.customer?.name,
+            email: booking.customer?.email
+          }
+        })
       });
-      setShowChargeModal(true);
+
+      if (response.ok) {
+        // Delete the booking after email is sent
+        const deleteResult = await mongoService.deleteBooking(booking.bookingId);
+        if (deleteResult.success) {
+          alert('Review email sent successfully! Booking has been completed and removed.');
+          onBookingChange(); // Refresh calendar
+          onClose();
+        } else {
+          alert('Email sent, but error removing booking: ' + deleteResult.error);
+        }
+      } else {
+        const errorText = await response.text();
+        alert('Error sending review email: ' + errorText);
+      }
+    } catch (error) {
+      console.error('Error completing booking:', error);
+      alert('Error completing booking: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -522,7 +550,7 @@ Final Charge: $${totals.finalAmount.toFixed(2)}`
           onClick={handleChargeClick}
           className="charge-button"
         >
-          Charge & Complete
+          Submit
         </button>
         <button 
           type="button" 
