@@ -17,6 +17,28 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid">
             
+            {/* Project-Based Services Section */}
+            <div className="service-card complex">
+              <div>
+                <h2>Request a Quote</h2>
+                <p>
+                  Projects that need evaluation and custom pricing. We'll provide a detailed quote.
+                </p>
+                <ul>
+                  <li>Mulching</li>
+                  <li>Brush removal</li>
+                  <li>Log splitting</li>
+                  <li>Landscape design</li>
+                </ul>
+              </div>
+              <Link 
+                to="/schedule" 
+                className="cta-button"
+              >
+                Get Started
+              </Link>
+            </div>
+
             {/* Hourly Services Section */}
             <div className="service-card hourly">
               <div>
@@ -36,28 +58,6 @@ export default function Home() {
                 className="cta-button"
               >
                 Schedule Now
-              </Link>
-            </div>
-
-            {/* Project-Based Services Section */}
-            <div className="service-card complex">
-              <div>
-                <h2>Project-Based Services</h2>
-                <p>
-                  Projects that need evaluation and custom pricing. We'll provide a detailed quote.
-                </p>
-                <ul>
-                  <li>Mulching</li>
-                  <li>Brush removal</li>
-                  <li>Log splitting</li>
-                  <li>Landscape design</li>
-                </ul>
-              </div>
-              <Link 
-                to="/schedule" 
-                className="cta-button"
-              >
-                Request Quote
               </Link>
             </div>
             
