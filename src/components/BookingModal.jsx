@@ -67,21 +67,40 @@ export default function BookingModal({
       const dateString = date.toISOString().split('T')[0];
       const availability = await mongoService.getAllCalendarAvailability();
       
+      console.log('🔍 [DEBUG BookingModal] Availability response:', availability);
+      
+      // Special debug for August 31st
+      if (dateString === '2025-08-31') {
+        console.log('🔍 [SPECIAL DEBUG BookingModal] August 31st full response:', JSON.stringify(availability, null, 2));
+      }
+      
       if (availability.success) {
         const dayData = availability.availability.find(day => day.date === dateString);
+        console.log('🔍 [DEBUG BookingModal] Day data for', dateString, ':', dayData);
+        
+        // Special debug for August 31st
+        if (dateString === '2025-08-31' && dayData) {
+          console.log('🔍 [SPECIAL DEBUG BookingModal] August 31st dayData structure:', JSON.stringify(dayData, null, 2));
+          console.log('🔍 [SPECIAL DEBUG BookingModal] Has availability?', !!dayData.availability);
+          console.log('🔍 [SPECIAL DEBUG BookingModal] Has timeSlots?', !!(dayData.availability && dayData.availability.timeSlots));
+          console.log('🔍 [SPECIAL DEBUG BookingModal] TimeSlots array:', dayData.availability?.timeSlots);
+        }
         
         if (dayData && dayData.availability && dayData.availability.timeSlots) {
           // For admin booking, show ALL time slots (admins can override availability)
           const allSlots = dayData.availability.timeSlots
             .sort((a, b) => a.time.localeCompare(b.time));
+          console.log('🔍 [DEBUG BookingModal] Using database time slots:', allSlots);
           setAvailableTimeSlots(allSlots);
         } else {
           // Generate default time slots for the date based on business rules
           const defaultSlots = timeSlotUtils.generateDefaultTimeSlots(date);
+          console.log('🔍 [DEBUG BookingModal] Using generated default slots:', defaultSlots);
           setAvailableTimeSlots(defaultSlots);
         }
       } else {
         const defaultSlots = timeSlotUtils.generateDefaultTimeSlots(date);
+        console.log('🔍 [DEBUG BookingModal] Using fallback default slots:', defaultSlots);
         setAvailableTimeSlots(defaultSlots);
       }
     } catch (error) {

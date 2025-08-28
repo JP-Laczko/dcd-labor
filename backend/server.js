@@ -22,6 +22,7 @@ const PORT = process.env.PORT || 3001;
 const resend = new Resend(process.env.RESEND_API_KEY);
 console.log('🔑 Resend API Key configured:', process.env.RESEND_API_KEY ? 'Yes' : 'No');
 console.log('📧 DCD Email configured:', process.env.DCD_EMAIL ? 'Yes' : 'No');
+console.log('📧 DCD Email address is:', process.env.DCD_EMAIL);
 
 // Square API Configuration
 const squareConfig = {
@@ -254,15 +255,41 @@ function generateDefaultTimeSlots(date) {
 // GET /api/calendar-availability - Get all calendar availability
 app.get('/api/calendar-availability', async (req, res) => {
   try {
+    console.log('🔍 [DEBUG] GET /api/calendar-availability called');
+    
     // Ensure database connection
     if (!db) {
       const connected = await connectToMongo();
       if (!connected) {
+        console.log('🔍 [DEBUG] Database connection failed');
         return res.status(500).json({ error: 'Database connection failed' });
       }
     }
     const collection = db.collection('calendar_availability');
-    const documents = await collection.find({}).toArray();
+    
+    // Only return dates within a reasonable range (last 30 days to next 60 days)
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(now.getDate() - 30);
+    const sixtyDaysFromNow = new Date(now);
+    sixtyDaysFromNow.setDate(now.getDate() + 60);
+    
+    const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+    const endDate = sixtyDaysFromNow.toISOString().split('T')[0];
+    
+    console.log('🔍 [DEBUG] Filtering dates from', startDate, 'to', endDate);
+    
+    const documents = await collection.find({
+      date: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    }).sort({ date: 1 }).toArray();
+    
+    console.log('🔍 [DEBUG] Filtered documents from DB:', documents.length, 'documents');
+    if (documents.length > 0) {
+      console.log('🔍 [DEBUG] Date range in results:', documents[0].date, 'to', documents[documents.length - 1].date);
+    }
     
     // Transform MongoDB documents to expected format (support both old and new schema)
     const availability = documents.map(doc => {
@@ -323,6 +350,8 @@ app.get('/api/calendar-availability', async (req, res) => {
       // Continue without booking integration if it fails
     }
     
+    console.log('🔍 [DEBUG] Final availability being sent:', availability.length, 'entries');
+    console.log('🔍 [DEBUG] Sample entries:', availability.slice(0, 3));
     res.json(availability);
   } catch (error) {
     console.error('❌ Error fetching calendar availability:', error);
@@ -953,9 +982,11 @@ app.post('/api/send-email', async (req, res) => {
     }
 
     // Send customer confirmation email
+    console.log('📧 Sending customer confirmation email using DCD_EMAIL:', process.env.DCD_EMAIL);
     const customerEmail = await sendCustomerConfirmation(bookingData, process.env.RESEND_API_KEY, process.env.DCD_EMAIL);
     
     // Send DCD notification email
+    console.log('📧 Sending DCD notification email to:', process.env.DCD_EMAIL);
     const dcdEmail = await sendDCDNotification(bookingData, process.env.RESEND_API_KEY, process.env.DCD_EMAIL);
 
     console.log('📧 Emails sent successfully');

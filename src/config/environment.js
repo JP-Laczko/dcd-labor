@@ -31,7 +31,7 @@ const config = {
   
   // Application Settings
   APP_NAME: 'DCD Labor',
-  COMPANY_EMAIL: 'info@dcdlabor.com',
+  COMPANY_EMAIL: 'contact@dcdlabor.com',
   COMPANY_PHONE: '(555) 123-4567',
   
   // Development/Production flags

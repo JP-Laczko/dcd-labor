@@ -149,28 +149,43 @@ class MongoService {
   // Check if a specific date is available for booking
   async checkDateAvailability(dateString) {
     try {
+      console.log('🔍 [DEBUG] checkDateAvailability called for:', dateString);
+      
       // Get calendar availability for the date
       const calendarResult = await this.getAllCalendarAvailability();
+      console.log('🔍 [DEBUG] Calendar result:', calendarResult);
+      
       let allowedBookings = 0;
       
       if (calendarResult.success && calendarResult.availability) {
         const dateEntry = calendarResult.availability.find(entry => entry.date === dateString);
+        console.log('🔍 [DEBUG] Date entry found:', dateEntry);
         allowedBookings = dateEntry?.bookings || 0;
+        console.log('🔍 [DEBUG] Allowed bookings:', allowedBookings);
       }
       
       // Get existing bookings for the date
       const bookingsResult = await this.getBookings();
+      console.log('🔍 [DEBUG] Bookings result:', bookingsResult);
+      
       let existingBookings = 0;
       
       if (bookingsResult.success && bookingsResult.bookings) {
-        existingBookings = bookingsResult.bookings.filter(booking => {
+        const filteredBookings = bookingsResult.bookings.filter(booking => {
           const bookingDate = new Date(booking.service?.date || booking.date);
           const bookingDateString = bookingDate.toISOString().split('T')[0];
+          console.log('🔍 [DEBUG] Checking booking date:', bookingDateString, 'vs target:', dateString);
           return bookingDateString === dateString;
-        }).length;
+        });
+        existingBookings = filteredBookings.length;
+        console.log('🔍 [DEBUG] Existing bookings for date:', existingBookings, 'bookings:', filteredBookings);
       }
       
       const isAvailable = allowedBookings > 0 && existingBookings < allowedBookings;
+      console.log('🔍 [DEBUG] Final calculation:');
+      console.log('  - Allowed bookings:', allowedBookings);
+      console.log('  - Existing bookings:', existingBookings);
+      console.log('  - Is available:', isAvailable);
       
       return {
         isAvailable,
@@ -179,7 +194,7 @@ class MongoService {
         remainingSlots: Math.max(0, allowedBookings - existingBookings)
       };
     } catch (error) {
-      console.error('Error checking date availability:', error);
+      console.error('❌ Error checking date availability:', error);
       return {
         isAvailable: false,
         error: error.message
@@ -190,11 +205,17 @@ class MongoService {
   // BOOKING OPERATIONS
   async createBooking(bookingData) {
     try {
+      console.log('🔍 [DEBUG] createBooking called with:', bookingData);
+      
       // First, check if the date is available
       const dateString = new Date(bookingData.date).toISOString().split('T')[0];
+      console.log('🔍 [DEBUG] Booking date string:', dateString);
+      
       const availabilityCheck = await this.checkDateAvailability(dateString);
+      console.log('🔍 [DEBUG] Availability check result:', availabilityCheck);
       
       if (!availabilityCheck.isAvailable) {
+        console.log('🔍 [DEBUG] Booking rejected - date not available');
         return {
           success: false,
           error: 'The selected date is not available for booking. Please choose another date.',

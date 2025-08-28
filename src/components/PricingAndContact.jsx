@@ -44,7 +44,7 @@ export default function PricingAndContact() {
   
         <div className="contact-info">
           <h3>Contact Us</h3>
-          <p>Email: <a href="mailto:nickdargel@dcdlabor.com">nickdargel@dcdlabor.com</a></p>
+          <p>Email: <a href="mailto:contact@dcdlabor.com">contact@dcdlabor.com</a></p>
           <p>Phone: <a href="tel:+19739452076">(973) 945-2076</a></p>
           <p>Service Area: North Jersey</p>
           <p>Hours: Mon-Fri 9AM-5PM, Sat 9AM-1PM, Sun Not Available</p>

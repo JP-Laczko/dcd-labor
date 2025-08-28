@@ -33,28 +33,44 @@ export default function CalendarSectionTimeSlots() {
     try {
       const timeSlots = new Map();
       const today = new Date();
+      console.log('🔍 [DATE DEBUG TimeSlots] Today is:', today.toISOString().split('T')[0]);
       
       // Initialize next 2 weeks with default time slots (starting from tomorrow, not today)
+      const dateRangeCheck = [];
       for (let i = 1; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
+        dateRangeCheck.push(dateString);
         
         // Generate default time slots for each date
         const defaultSlots = timeSlotUtils.generateDefaultTimeSlots(date);
         timeSlots.set(dateString, defaultSlots);
       }
+      console.log('🔍 [DATE DEBUG TimeSlots] Looking for dates:', dateRangeCheck);
       
       // Get calendar availability from database and merge with defaults
       const calendarResult = await mongoService.getAllCalendarAvailability();
+      console.log('🔍 [DATE DEBUG TimeSlots] Database returned dates:', 
+        calendarResult.success ? calendarResult.availability.map(entry => entry.date) : 'No data');
       
       if (calendarResult.success && calendarResult.availability) {
         calendarResult.availability.forEach(entry => {
           if (entry.availability && entry.availability.timeSlots) {
             // Use database time slots if available
+            console.log(`🔍 [DATE DEBUG TimeSlots] Overriding ${entry.date} with database slots:`, entry.availability.timeSlots.length);
             timeSlots.set(entry.date, entry.availability.timeSlots);
           }
         });
+      }
+      
+      // Special debug for August 31st
+      const aug31 = '2025-08-31';
+      if (timeSlots.has(aug31)) {
+        const aug31Slots = timeSlots.get(aug31);
+        console.log(`🔍 [SPECIAL DEBUG TimeSlots] August 31st final slots:`, aug31Slots.map(s => s.displayTime));
+      } else {
+        console.log('🔍 [SPECIAL DEBUG TimeSlots] August 31st not found in final time slots map');
       }
       
       // Get existing bookings to mark slots as unavailable

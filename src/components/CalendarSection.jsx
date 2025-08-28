@@ -48,28 +48,35 @@ export default function CalendarSection() {
       // Step 1: Start with all days unavailable (0)
       const availability = new Map();
       const today = new Date();
+      console.log('🔍 [DATE DEBUG] Today is:', today.toISOString().split('T')[0]);
       
       // Initialize next 2 weeks as unavailable
+      const dateRangeCheck = [];
       for (let i = 1; i <= 14; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
         availability.set(dateString, 0); // Start unavailable
+        dateRangeCheck.push(dateString);
       }
+      console.log('🔍 [DATE DEBUG] Looking for dates:', dateRangeCheck);
       
       // Step 2: Get all calendar availability entries
       const calendarResult = await mongoService.getAllCalendarAvailability();
-      console.log('📅 Calendar availability data received');
+      console.log('🔍 [DEBUG] Calendar availability data received:', calendarResult);
       
       const allowedBookingsPerDay = new Map();
       if (calendarResult.success && calendarResult.availability) {
         calendarResult.availability.forEach(entry => {
           allowedBookingsPerDay.set(entry.date, entry.bookings || 0);
+          console.log('🔍 [DEBUG] Added allowed bookings for', entry.date, ':', entry.bookings || 0);
         });
       }
+      console.log('🔍 [DEBUG] Allowed bookings per day map:', allowedBookingsPerDay);
       
       // Step 3: Get all bookings and count actual bookings per day
       const bookingsResult = await mongoService.getBookings();
+      console.log('🔍 [DEBUG] Bookings result:', bookingsResult);
       
       const actualBookingsPerDay = new Map();
       if (bookingsResult.success && bookingsResult.bookings) {
@@ -85,6 +92,8 @@ export default function CalendarSection() {
       
       // Step 4: Mark days available if actual bookings < allowed bookings
       const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      console.log('🔍 [DEBUG] Processing availability for next 14 days starting from:', todayLocal);
+      
       for (let i = 1; i <= 14; i++) {
         const date = new Date(todayLocal);
         date.setDate(todayLocal.getDate() + i);
@@ -96,9 +105,25 @@ export default function CalendarSection() {
         // Available if actual bookings < allowed bookings AND allowedBookings > 0
         const isAvailable = (allowedBookings > 0 && actualBookings < allowedBookings) ? 1 : 0;
         
+        console.log(`🔍 [DEBUG] Date ${dateString}: allowed=${allowedBookings}, actual=${actualBookings}, available=${isAvailable}`);
+        
         // Use consistent date format (ISO string)
         availability.set(dateString, isAvailable);
       }
+      
+      console.log('🔍 [DEBUG] Final availability map:', availability);
+      
+      // Special debug for August 31st
+      const aug31 = '2025-08-31';
+      if (availability.has(aug31)) {
+        console.log(`🔍 [SPECIAL DEBUG] August 31st availability: ${availability.get(aug31)}`);
+        const aug31Data = allowedBookingsPerDay.get(aug31);
+        const aug31Bookings = actualBookingsPerDay.get(aug31);
+        console.log(`🔍 [SPECIAL DEBUG] August 31st - Allowed: ${aug31Data || 0}, Actual: ${aug31Bookings || 0}`);
+      } else {
+        console.log('🔍 [SPECIAL DEBUG] August 31st not found in availability map');
+      }
+      
       setDailyAvailability(availability);
     } catch (error) {
       console.error('❌ Calendar: Error fetching calendar availability:', error);

@@ -10,15 +10,30 @@ async function checkCalendarData() {
     const db = client.db('dcd-labor');
     const collection = db.collection('calendar_availability');
     
-    console.log('\n📅 All calendar availability documents:');
-    const documents = await collection.find({}).toArray();
+    console.log('\n📅 August 2025 calendar availability documents:');
+    const documents = await collection.find({
+      date: {
+        $regex: '^2025-08-'
+      }
+    }).sort({ date: 1 }).toArray();
     
-    documents.forEach((doc, index) => {
-      console.log(`\n📄 Document ${index + 1}:`);
-      console.log(JSON.stringify(doc, null, 2));
+    console.log(`\n📊 Found ${documents.length} August 2025 documents:`);
+    
+    documents.forEach((doc) => {
+      const date = new Date(doc.date);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      
+      console.log(`\n📄 ${doc.date} (${dayName}):`);
+      console.log(`  - maxBookings: ${doc.availability?.maxBookings || 0}`);
+      console.log(`  - isAvailable: ${doc.availability?.isAvailable || false}`);
+      console.log(`  - timeSlots: ${doc.availability?.timeSlots?.length || 0} slots`);
+      
+      if (doc.availability?.timeSlots && doc.availability.timeSlots.length > 0) {
+        doc.availability.timeSlots.forEach((slot, index) => {
+          console.log(`    ${index + 1}. ${slot.displayTime} (${slot.time}) - Available: ${slot.isAvailable}`);
+        });
+      }
     });
-    
-    console.log(`\n📊 Total documents: ${documents.length}`);
     
     // Check which documents have the new format
     const newFormatDocs = documents.filter(doc => doc.availability && doc.availability.timeSlots);
