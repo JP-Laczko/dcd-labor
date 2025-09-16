@@ -1,9 +1,27 @@
 import { useEffect, useState } from "react";
-import dcd1 from "../assets/images/dcd1.jpg";
-import dcd3 from "../assets/images/dcd3.jpg";
-import dcd4 from "../assets/images/dcd4.jpg";
+import before3 from "../assets/images/BEFORE 3.jpg";
+import before4 from "../assets/images/BEFORE 4.jpg";
+import before5 from "../assets/images/BEFORE 5.jpg";
+import before6 from "../assets/images/BEFORE 6.jpg";
+import before7 from "../assets/images/BEFORE 7.jpg";
+import before8 from "../assets/images/BEFORE 8.jpg";
+import before9 from "../assets/images/BEFORE 9.jpg";
+import before10 from "../assets/images/BEFORE 10.jpg";
+import before11 from "../assets/images/BEFORE 11.jpg";
+import before12 from "../assets/images/BEFORE 12.jpg";
+import before13 from "../assets/images/BEFORE 13.jpg";
+import before14 from "../assets/images/BEFORE 14.jpg";
+import before15 from "../assets/images/BEFORE 15.jpg";
+import before16 from "../assets/images/BEFORE 16.jpg";
+import before17 from "../assets/images/BEFORE 17.jpg";
+import before18 from "../assets/images/BEFORE 18.jpg";
+import before19 from "../assets/images/BEFORE 19.jpg";
+import before20 from "../assets/images/BEFORE 20.jpg";
+import before21 from "../assets/images/BEFORE 21.jpg";
+import before22 from "../assets/images/BEFORE 22.jpg";
+import beforeMain from "../assets/images/BEFORE.jpg";
 
-const images = [dcd1, dcd3, dcd4];
+const images = [before3, before4, before5, before6, before7, before8, before9, before10, before11, before12, before13, before14, before15, before16, before17, before18, before19, before20, before21, before22, beforeMain];
 
 export default function HeroCarousel() {
   const [current, setCurrent] = useState(0);
